@@ -59,7 +59,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
     <div class="panel">
       <h2>카드내역 올리기</h2>
       <div id="drop" tabindex="0"><b>이미지·PDF·CSV를 끌어놓거나 눌러서 선택</b><br>캡처가 길어도 자동으로 나눠서 읽어요. 여러 파일 가능.</div>
-      <input id="file" type="file" accept="image/*,application/pdf,.csv,text/csv" multiple class="hide">
+      <input id="file" type="file" multiple class="hide">
       <div id="status"></div>
     </div>
     <div class="panel">
@@ -145,7 +145,7 @@ drop.onkeydown = e => { if (e.key === 'Enter') $('file').click(); };
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
 drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); handle([...e.dataTransfer.files]); };
-$('file').onchange = e => { handle([...e.target.files]); e.target.value = ''; };
+$('file').onchange = e => { const fl = Array.from(e.target.files); e.target.value = ''; handle(fl); };
 
 const b64 = blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(blob); });
 
@@ -187,11 +187,13 @@ async function analyze(chunk) {
 }
 
 async function handle(files) {
+  setStatus(`파일 ${files.length}개를 읽는 중…`);
   files = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || isCsv(f));
   if (!files.length) return setStatus('이미지, PDF, CSV 파일만 올릴 수 있어요.', true);
   try {
     let chunks = [];
     for (const f of files) chunks.push(...await toChunks(f));
+    setStatus(`분석 중… 0/${chunks.length} (잠시 걸려요)`);
     let all = [], done = 0;
     for (let i = 0; i < chunks.length; i += 3) {
       const part = await Promise.all(chunks.slice(i, i + 3).map(c => analyze(c).then(r => { setStatus(`분석 중… ${++done}/${chunks.length}`); return r; })));
