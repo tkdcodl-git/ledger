@@ -268,7 +268,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   /* v2.0 합계 행 최하단 고정 + 상단 메뉴 여백 */
   #dash .dt tr.r1 td.its, #history .dt tr.r1 td.its { padding-bottom: 5px; }
   #dash .dt tr.sr td, #history .dt tr.sr td { padding-top: 5px; padding-bottom: 7px; border-left: 1px solid #e6ebe9; }
-  #tabs { margin-top: 12px !important; }
+  #tabs { margin-top: 22px !important; } /* 아이폰 상단 흐림 구간을 피하는 최소 여백 */
 
   /* v2.2 표 전체 7px, 년월 최소 너비, 헤더·합계 행 높이 축소 */
   #dash .dt, #history .dt { font-size: 7px; }
@@ -399,7 +399,7 @@ td select { border-radius: 999px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v2.6';
+const APP_VERSION = 'v2.7';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -842,6 +842,7 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   $('app').classList.toggle('hide', b.dataset.t !== 'tx');
   $('dash').classList.toggle('hide', b.dataset.t !== 'dash');
   $('history').classList.toggle('hide', b.dataset.t !== 'history');
+  $('ver').classList.toggle('hide', b.dataset.t === 'dash');
   if (b.dataset.t === 'dash' || b.dataset.t === 'history') drawDash();
 });
 // 좌우 스와이프로 탭 이동 (거래 내역 ↔ 대시보드 ↔ 전체 누적)
