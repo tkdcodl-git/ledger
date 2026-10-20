@@ -394,7 +394,7 @@ td select { border-radius: 8px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v3.6';
+const APP_VERSION = 'v3.7';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -511,6 +511,26 @@ function parseAmountStr(v) {
   const n = parseFloat(raw.replace(/[,\s원₩()\-−▲△]/g, ''));
   return isFinite(n) ? Math.round(neg ? -n : n) : null;
 }
+// 열 이름을 못 찾았을 때: 내용으로 날짜/금액/가맹점 열을 추정 (AI 없이)
+function guessCols(rows) {
+  const sample = rows.filter(r => r && r.some(c => String(c == null ? '' : c).trim())).slice(0, 80);
+  const w = Math.max(0, ...sample.map(r => r.length));
+  const st = Array.from({ length: w }, () => ({ d: 0, n: 0, t: 0, len: 0 }));
+  sample.forEach(r => r.forEach((c, i) => {
+    const v = String(c == null ? '' : c).trim(); if (!v) return;
+    if (parseDateStr(v) && v.length <= 24) st[i].d++;
+    else if (/^[\d,.\-−▲△()원₩\s]+$/.test(v) && parseAmountStr(v) != null) st[i].n++;
+    else { st[i].t++; st[i].len += v.length; }
+  }));
+  let di = -1; st.forEach((c, i) => { if (c.d >= 3 && (di < 0 || c.d > st[di].d)) di = i; });
+  if (di < 0) return null;
+  const need = Math.max(3, st[di].d * 0.6);
+  let ai = -1; st.forEach((c, i) => { if (i !== di && c.n >= need && (ai < 0 || c.n > st[ai].n)) ai = i; });
+  let mi = -1; st.forEach((c, i) => { if (i !== di && i !== ai && c.t >= need && (mi < 0 || c.len / c.t > st[mi].len / st[mi].t)) mi = i; });
+  if (ai < 0 || mi < 0) return null;
+  const start = rows.findIndex(r => r && parseDateStr(r[di]));
+  return start < 0 ? null : { di, mi, ai, start };
+}
 // rows(2차원 배열) → [{date, merchant, amount}] 또는 null(열을 못 찾았거나 읽기 불안정 → AI로)
 function localParseRows(rows) {
   const norm = c => String(c == null ? '' : c).replace(/\s+/g, '');
@@ -525,7 +545,7 @@ function localParseRows(rows) {
     let a = -1; for (const re of amtRes) { a = cells.findIndex(c => re.test(c) && !bad.test(c)); if (a >= 0) break; }
     if (d >= 0 && m >= 0 && a >= 0 && d !== m && m !== a) { hi = r; di = d; mi = m; ai = a; ci = cells.findIndex((c, i) => /취소|상태|구분/.test(c) && i !== di && i !== mi && i !== ai); }
   }
-  if (hi < 0) return null;
+  if (hi < 0) { const g = guessCols(rows); if (!g) return null; di = g.di; mi = g.mi; ai = g.ai; ci = -1; hi = g.start - 1; }
   const out = []; let badN = 0;
   for (const row of rows.slice(hi + 1)) {
     if (!row || !row.some(c => norm(c))) continue;
@@ -538,6 +558,24 @@ function localParseRows(rows) {
     out.push({ date, merchant, amount });
   }
   return out.length && out.length / (out.length + badN) >= 0.9 ? out : null;
+}
+// 키워드 → 분류 (앞쪽이 우선). 내 분류에 없는 이름이면 '기타'. 직접 바꾼 규칙/과거 내역이 항상 먼저 적용돼요.
+const KEYWORDS = [
+  ['통신/구독', /넷플릭스|유튜브|멜론|스포티파이|와우|구독|스카이라이프|통신|SKT|KT|LGU|U\+|티빙|웨이브|디즈니/i],
+  ['관리비/공과금', /관리비|한국전력|한전|도시가스|가스공사|수도|지방세|국세|세금|공과금|아파트/],
+  ['병원/약국', /병원|의원|약국|치과|한의원|클리닉|내과|소아과|안과|피부과|이비인후과|정형외과/],
+  ['주유/교통', /주유|칼텍스|SK에너지|에쓰오일|S-?OIL|현대오일|오일뱅크|코레일|KTX|SRT|택시|버스|지하철|티머니|하이패스|주차|도로공사|카카오T|충전/i],
+  ['여행/숙소', /호텔|리조트|펜션|숙박|에어비앤비|항공|야놀자|여기어때|아고다|트립|모텔|캠핑/],
+  ['교육/육아', /어린이집|유치원|학원|교육|서점|교보문고|키즈|영어|학습/],
+  ['경조사/선물', /화환|꽃|상품권|축의|부의|기프트/],
+  ['카페/간식', /카페|커피|스타벅스|베이커리|빵|파리바게|뚜레쥬르|아이스크림|디저트|투썸|이디야|메가MGC|메가커피|컴포즈|빽다방|도넛|떡/i],
+  ['백화점/외식', /백화점|식당|치킨|피자|맥도날드|버거|김밥|국밥|고기|횟집|쌈밥|샤브|분식|반점|곱창|갈비|냉면|초밥|뷔페|술집|포차|롯데리아|서브웨이/],
+  ['마트/반찬', /마트|슈퍼|한살림|반찬|편의점|GS25|지에스25|CU|씨유|세븐일레븐|이마트|홈플러스|하나로|농협|정육|과일|야채|코스트코/i],
+  ['쇼핑', /네이버페이|쿠팡|11번가|G마켓|옥션|올리브영|다이소|유니클로|무신사|아울렛|쇼핑|몰$|스토어/i]
+];
+function guessCategory(m) {
+  for (const [cat, re] of KEYWORDS) if (re.test(m) && CATS.includes(cat)) return cat;
+  return '기타';
 }
 async function localRowsOf(file) {
   try {
@@ -667,18 +705,16 @@ async function handle(files) {
   if (!files.length) return setStatus('이미지, PDF, CSV, 엑셀 파일만 올릴 수 있어요.', true);
   try {
     // 엑셀/CSV는 먼저 AI 없이 직접 읽음 (열을 못 찾으면 AI로)
-    const localRows = [], aiFiles = [];
+    const localRows = [], aiFiles = [], unreadable = [];
     for (const f of files) {
-      const r = (isCsv(f) || isXls(f)) ? await localRowsOf(f) : null;
-      if (r) localRows.push(...r); else aiFiles.push(f);
+      if (isCsv(f) || isXls(f)) { const r = await localRowsOf(f); if (r) localRows.push(...r); else unreadable.push(f.name); }
+      else aiFiles.push(f);
     }
     let chunks = [];
     for (const f of aiFiles) chunks.push(...await toChunks(f));
-    const unknown = [...new Set(localRows.map(t => t.merchant).filter(m => !ruleFor(m)))];
-    const cBatches = []; for (let i = 0; i < unknown.length; i += 100) cBatches.push(unknown.slice(i, i + 100));
     setStatus('');
     aiCalls = 0;
-    progStart(chunks.length + cBatches.length || 1, localRows.length ? `엑셀/CSV ${localRows.length}건은 바로 읽었어요 · 분류 중` : 'AI가 내역을 읽는 중');
+    progStart(chunks.length || 1, localRows.length ? `엑셀/CSV ${localRows.length}건을 AI 없이 읽었어요` : 'AI가 내역을 읽는 중');
     upCancel = false; upDeadline = Date.now() + 15 * 60 * 1000; // 최대 15분
     $('upCancel').disabled = false;
     const seen = {}, existing = new Set(txs.map(t => t.hash));
@@ -698,13 +734,7 @@ async function handle(files) {
     };
     let aiDone = 0, classFail = '';
     if (localRows.length) {
-      const cmap = {};
-      for (const names of cBatches) {
-        if (upCancel || Date.now() > upDeadline || classFail) break;
-        try { Object.assign(cmap, await analyzeSplit({ classify: names })); okChunks++; } catch (e) { classFail = e.message; }
-        prog.done++;
-      }
-      localRows.forEach(t => { t.category = cmap[t.merchant]; });
+      localRows.forEach(t => { t.category = guessCategory(t.merchant); });
       addRows(localRows); refresh();
       if (chunks.length) { prog.msg = 'AI가 내역을 읽는 중'; }
     }
@@ -723,9 +753,9 @@ async function handle(files) {
     refresh();
     const skipped = chunks.length - aiDone;
     const reason = fails.length ? fails[0] : '';
-    const used = `(AI 요청 ${aiCalls}회 사용)`, cNote = classFail ? ` 새 가맹점 분류는 AI가 실패해 일부를 '기타'로 넣었어요(${classFail}).` : '';
+    const used = `(AI 요청 ${aiCalls}회 사용)`, cNote = unreadable.length ? ` 읽지 못한 엑셀/CSV: ${unreadable.join(', ')} — 이용일·가맹점·금액 열을 찾지 못했어요(엑셀/CSV는 AI를 쓰지 않아요).` : '';
     if (aborted || fails.length) setStatus(`${aborted ? aborted + ' ' : ''}${fails.length ? fails.length + '개 구간 실패' + (reason ? ': ' + reason : '') + '. ' : ''}${skipped > 0 ? '시도하지 못한 구간 ' + skipped + '개. ' : ''}읽은 ${readN}건 중 ${added}건을 추가했어요.${cNote} ${used}`, true);
-    else setStatus(`${readN}건을 읽었고 ${added}건을 새로 추가했어요. 분류를 확인하고 저장하세요.${cNote} ${used}`, !!classFail);
+    else setStatus(`${readN}건을 읽었고 ${added}건을 새로 추가했어요. 분류를 확인하고 저장하세요.${cNote} ${used}`, unreadable.length > 0);
   } catch (e) { clearInterval(prog.timer); $('prog').classList.add('hide'); setStatus(e.message, true); }
 }
 
