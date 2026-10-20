@@ -68,6 +68,11 @@ th{text-align:center!important}
 .ln.sum{font-weight:600}
 .dt tr.sr td{padding-top:6px}
 .dt tr.sr{height:1px}
+/* v2.5 합계칸 높이 고정: 비고가 길어지면 항목 칸만 늘어남 */
+.dt td.its{padding:0!important;height:1px}
+.dt .ic{display:flex;flex-direction:column;height:100%}
+.dt .il{flex:1 1 auto;padding:10px 8px 6px}
+.dt .is{flex:0 0 auto;border-top:1px solid var(--line);padding:6px 8px 10px}
 .lg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-bottom:4px}
 .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
@@ -294,6 +299,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash, #history { padding-left: 3px; padding-right: 3px; }
   #dash > .panel, #history > .panel { padding-left: 3px; padding-right: 3px; }
   #dash .dt td.memo, #history .dt td.memo { padding-top: 4px; padding-bottom: 4px; }
+  #dash .dt .il, #history .dt .il { padding: 7px 4px 2px; }
+  #dash .dt .is, #history .dt .is { padding: 2px 4px 3px; }
 }
 
 /* v2.4 디자인: 따뜻한 오프화이트 · 큰 라운드 카드 · 알약형 탭/버튼 */
@@ -896,7 +903,7 @@ const sumLn = (label, v) => `<div class="ln sum"><span>${label}</span><b>${mm(v)
 // 카드값 비고 자동 문구 (전월 카드내역, 5만원 이상 분류)
 function cardMemoAuto(m) {
   const c = cardByMonth()[monthAdd(m, -1)];
-  return c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
+  return c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[0] !== '기타' && e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
 }
 function dashboardRow(m, card) {
   const L = ledger[m] || {}, c = card[monthAdd(m, -1)], cardMan = c ? c.total / 10000 : 0;
@@ -904,14 +911,13 @@ function dashboardRow(m, card) {
   const exp = [{ n: '카드값', v: -cardMan }, ...(L.expense || []).map(e => ({ n: e.n, v: -Math.abs(e.v) }))];
   const prev = (ledger[monthAdd(m, -1)] || {}).balance;
   const diff = (L.balance != null && prev != null) ? L.balance - prev : null;
-  const memo = typeof L.cardMemo === 'string' ? L.cardMemo.trim() : cardMemoAuto(m); // 직접 고친 문구가 있으면 그것을 사용
-  return `<tr class="r1"><td class="c" rowspan="2">${m.replace('-', '')}<br><button class="btn sm" data-m="${m}">입력</button></td>
-    <td class="n" rowspan="2">${L.balance != null ? mm(L.balance) : '-'}</td>
-    <td class="n ${diff < 0 ? 'neg' : ''}" rowspan="2">${diff != null ? mm(diff) : '-'}</td>
-    <td class="its">${lns(inc)}</td>
-    <td class="its">${lns(exp)}</td>
-    <td class="memo" rowspan="2">${memo ? `<div class="mp">${esc(memo)}</div>` : ''}${L.note && L.note.trim() ? `<div class="mp">${esc(L.note.trim())}</div>` : ''}</td></tr>
-    <tr class="sr"><td>${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</td><td>${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td></tr>`;
+  const memo = typeof L.cardMemo === 'string' ? L.cardMemo.replace(/(^|\s)기타\(-?[\d.]+\)/g, '$1').replace(/\n- *\n|\n- *$/g, '\n').replace(/[ \t]+/g, ' ').trim() : cardMemoAuto(m); // 직접 고친 문구가 있으면 그것을 사용
+  return `<tr class="r1"><td class="c" >${m.replace('-', '')}<br><button class="btn sm" data-m="${m}">입력</button></td>
+    <td class="n" >${L.balance != null ? mm(L.balance) : '-'}</td>
+    <td class="n ${diff < 0 ? 'neg' : ''}" >${diff != null ? mm(diff) : '-'}</td>
+    <td class="its"><div class="ic"><div class="il">${lns(inc)}</div><div class="is">${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</div></div></td>
+    <td class="its"><div class="ic"><div class="il">${lns(exp)}</div><div class="is">${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</div></div></td>
+    <td class="memo">${memo ? `<div class="mp">${esc(memo)}</div>` : ''}${L.note && L.note.trim() ? `<div class="mp">${esc(L.note.trim())}</div>` : ''}</td></tr>`;
 }
 function drawDash() {
   const card = cardByMonth(), m1 = latestMonth(), m2 = monthAdd(m1, -1);
