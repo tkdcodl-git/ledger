@@ -58,8 +58,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   <div>
     <div class="panel">
       <h2>카드내역 올리기</h2>
-      <div id="drop" tabindex="0"><b>이미지나 PDF를 끌어놓거나 눌러서 선택</b><br>캡처가 길어도 자동으로 나눠서 읽어요. 여러 파일 가능.</div>
-      <input id="file" type="file" accept="image/*,application/pdf" multiple class="hide">
+      <div id="drop" tabindex="0"><b>이미지·PDF·CSV를 끌어놓거나 눌러서 선택</b><br>캡처가 길어도 자동으로 나눠서 읽어요. 여러 파일 가능.</div>
+      <input id="file" type="file" accept="image/*,application/pdf,.csv,text/csv" multiple class="hide">
       <div id="status"></div>
     </div>
     <div class="panel">
@@ -96,7 +96,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 <script>
 // ▼ 본인 Supabase 값으로 교체 (anon 키는 공개해도 되는 키입니다)
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';const CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
+const CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const won = n => n.toLocaleString('ko-KR');
@@ -148,7 +149,19 @@ $('file').onchange = e => { handle([...e.target.files]); e.target.value = ''; };
 
 const b64 = blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(blob); });
 
+const isCsv = f => /\.csv$/i.test(f.name) || f.type === 'text/csv';
+async function readText(file) {
+  const buf = await file.arrayBuffer();
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch { return new TextDecoder('euc-kr').decode(buf); } // 카드사 CSV는 EUC-KR인 경우가 많음
+}
 async function toChunks(file) {
+  if (isCsv(file)) {
+    const lines = (await readText(file)).split(/\r?\n/).filter(l => l.trim());
+    const head = lines[0], out = [];
+    for (let i = 1; i < lines.length; i += 250) out.push({ text: [head, ...lines.slice(i, i + 250)].join('\n') });
+    return out.length ? out : [{ text: lines.join('\n') }];
+  }
   if (file.type === 'application/pdf') return [{ media_type: 'application/pdf', data: await b64(file) }];
   const bmp = await createImageBitmap(file);
   const s = Math.min(1, 1100 / bmp.width), W = Math.round(bmp.width * s), H = Math.round(bmp.height * s);
@@ -174,8 +187,8 @@ async function analyze(chunk) {
 }
 
 async function handle(files) {
-  files = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf');
-  if (!files.length) return setStatus('이미지 또는 PDF 파일만 올릴 수 있어요.', true);
+  files = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || isCsv(f));
+  if (!files.length) return setStatus('이미지, PDF, CSV 파일만 올릴 수 있어요.', true);
   try {
     let chunks = [];
     for (const f of files) chunks.push(...await toChunks(f));
