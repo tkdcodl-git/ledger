@@ -132,6 +132,43 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   footer { padding-bottom: 20px; }
 }
 
+
+@media (max-width: 600px) {
+  /* Compact transaction table: date, merchant, category, amount, delete */
+  #app .tbl table:not(.dt) { width: 100%; min-width: 0; table-layout: fixed; font-size: 11px; }
+  #app .tbl table:not(.dt) th, #app .tbl table:not(.dt) td {
+    padding: 5px 3px; white-space: normal; vertical-align: middle;
+  }
+  #app .tbl table:not(.dt) th:nth-child(1), #app .tbl table:not(.dt) td.txdate { width: 45px; white-space: nowrap; }
+  #app .tbl table:not(.dt) th:nth-child(2), #app .tbl table:not(.dt) td.merchant {
+    width: 78px; max-width: 78px; overflow-wrap: anywhere;
+  }
+  #app .tbl table:not(.dt) th:nth-child(3), #app .tbl table:not(.dt) td.category { width: 92px; }
+  #app .tbl table:not(.dt) th:nth-child(4), #app .tbl table:not(.dt) td.amount { width: 66px; white-space: nowrap; }
+  #app .tbl table:not(.dt) th.delhead, #app .tbl table:not(.dt) td.deletecell {
+    width: 20px; padding-left: 0; padding-right: 0; text-align: center;
+  }
+  #app .tbl table:not(.dt) td.category select {
+    width: 100%; min-width: 0; max-width: 100%; padding: 3px 1px; font-size: 10px;
+  }
+  #app .tbl table:not(.dt) .x { padding: 0; width: 18px; font-size: 15px; line-height: 1.2; }
+
+  /* Dashboard monthly table: compact spreadsheet-like layout, mobile only */
+  #dash .tbl { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #dash .dt { width: 100% !important; min-width: 700px; table-layout: fixed; font-size: 11px; }
+  #dash .dt th, #dash .dt td { padding: 5px 4px; }
+  #dash .dt th:nth-child(1), #dash .dt td:nth-child(1) { width: 62px; }
+  #dash .dt th:nth-child(2), #dash .dt td:nth-child(2) { width: 48px; }
+  #dash .dt th:nth-child(3), #dash .dt td:nth-child(3) { width: 48px; }
+  #dash .dt th:nth-child(4), #dash .dt td:nth-child(4) { width: 125px; }
+  #dash .dt th:nth-child(5), #dash .dt td:nth-child(5) { width: 125px; }
+  #dash .dt th:nth-child(6), #dash .dt td:nth-child(6) { width: 260px; }
+  #dash .dt td.memo { min-width: 0; font-size: 10px; line-height: 1.35; white-space: pre-line; overflow-wrap: anywhere; }
+  #dash .dt td:nth-child(4), #dash .dt td:nth-child(5) { overflow-wrap: anywhere; }
+  #dash .dt td.c { text-align: center; }
+  #dash .dt .btn.sm { font-size: 10px; padding: 2px 5px; }
+}
+
 </style>
 </head>
 <body>
@@ -173,7 +210,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
         <button class="btn primary" id="save" disabled>저장</button>
       </div>
       <div class="tbl"><table>
-        <thead><tr><th>날짜</th><th>가맹점</th><th class="n">금액</th><th>분류</th><th></th></tr></thead>
+        <thead><tr><th>날짜</th><th>가맹점</th><th>분류</th><th class="n">금액</th><th class="delhead"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table></div>
       <p id="empty" class="muted">아직 내역이 없어요. 위에서 카드내역을 올려보세요.</p>
@@ -203,7 +240,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.5';
+const APP_VERSION = 'v1.6';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -382,10 +419,10 @@ function draw() {
   const m = $('month').value, list = txs.filter(t => t.date.startsWith(m));
   $('empty').classList.toggle('hide', txs.length > 0);
   $('rows').innerHTML = list.map(t => `<tr class="${t.fresh && !t.saved ? 'new' : ''}">
-    <td>${esc(t.date.slice(5).replace('-', '/'))}</td><td>${esc(t.merchant)}</td>
-    <td class="n ${t.amount < 0 ? 'neg' : ''}">${won(t.amount)}</td>
-    <td><select data-h="${esc(t.hash)}">${(CATS.includes(t.category) ? CATS : [...CATS, t.category]).map(c => `<option${c === t.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
-    <td><button class="x" data-d="${esc(t.hash)}" aria-label="삭제">×</button></td></tr>`).join('');
+    <td class="txdate">${esc(t.date.slice(5).replace('-', '/'))}</td><td class="merchant">${esc(t.merchant)}</td>
+     <td class="category"><select data-h="${esc(t.hash)}">${(CATS.includes(t.category) ? CATS : [...CATS, t.category]).map(c => `<option${c === t.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
+     <td class="n amount ${t.amount < 0 ? 'neg' : ''}">${won(t.amount)}</td>
+     <td class="deletecell"><button class="x" data-d="${esc(t.hash)}" aria-label="삭제">×</button></td></tr>`).join('');
   $('save').disabled = !(txs.some(t => !t.saved) || removed.size || rulesDirty.size);
   const sum = {}; let total = 0;
   list.forEach(t => { sum[t.category] = (sum[t.category] || 0) + t.amount; total += t.amount; });
