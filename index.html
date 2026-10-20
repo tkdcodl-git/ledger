@@ -78,6 +78,60 @@ input,textarea{ime-mode:active}
 .fl{display:block;margin:12px 0;font-weight:600;font-size:14px}.fl input,.fl textarea{margin-top:4px;font-weight:400}
 footer{text-align:center;color:var(--mute);font-size:12.5px;padding:8px 0 28px}
 label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--mute)}
+
+/* Mobile layout: prioritize readable columns and horizontal scrolling on iPhone */
+@media (max-width: 600px) {
+  body { font-size: 13px; line-height: 1.4; }
+  header { padding: 12px 12px; gap: 8px; }
+  header h1 { font-size: 16px; }
+  #tabs { margin: 10px auto 0; padding: 0 8px; gap: 4px; flex-wrap: wrap; }
+  .tab { padding: 7px 10px; font-size: 13px; }
+  #tabs .btn { padding: 6px 10px; font-size: 12px; }
+  main { display: block; margin: 10px auto; padding: 0 8px; }
+  main > div, main > aside { min-width: 0; }
+  main > aside { margin-top: 10px; }
+  .panel { padding: 11px; border-radius: 10px; }
+  .panel + .panel { margin-top: 10px; }
+  h2 { font-size: 13px; margin-bottom: 8px; }
+  #drop { padding: 18px 10px; font-size: 12px; }
+  .bar { gap: 6px; margin-bottom: 8px; }
+  .bar .sp { flex-basis: 0; }
+  .btn { padding: 5px 9px; font-size: 12px; }
+  .btn.sm { padding: 2px 7px; font-size: 11px; }
+  #month { max-width: 135px; }
+  label.chk { font-size: 11px; gap: 4px; }
+  #sameMerchant { margin: 0 2px 0 0; }
+  .tbl { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl table { width: 650px; table-layout: auto; font-size: 12px; }
+  .tbl th, .tbl td { padding: 6px 6px; white-space: nowrap; }
+  .tbl td:nth-child(2) { white-space: normal; min-width: 110px; max-width: 150px; overflow-wrap: anywhere; }
+  .tbl td select { max-width: 120px; font-size: 11px; padding: 3px 4px; }
+  .dt { width: 780px !important; table-layout: auto; }
+  .dt th, .dt td { padding: 7px 6px; white-space: normal; }
+  .dt td.memo { min-width: 180px; font-size: 11px; }
+  .dt td:nth-child(1) { min-width: 82px; white-space: nowrap; }
+  .dt td:nth-child(2), .dt td:nth-child(3) { min-width: 65px; white-space: nowrap; }
+  .dt td:nth-child(4), .dt td:nth-child(5) { min-width: 125px; }
+  .dgrid { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 10px; }
+  .dgrid .panel { min-width: 0; }
+  #lineChart { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #lineChart svg { min-width: 520px; }
+  .hb { gap: 5px; font-size: 11px; margin: 7px 0; }
+  .hb span { width: 72px; overflow-wrap: anywhere; }
+  .hb b { width: 104px; font-size: 10px; }
+  .track { min-width: 24px; }
+  .total { font-size: 22px; }
+  .cat { gap: 6px; font-size: 12px; }
+  .cat span:first-child { width: 82px; }
+  .cat .v { font-size: 11px; }
+  textarea { min-height: 120px; font-size: 12px; }
+  .sheet { padding: 14px; }
+  .crow { gap: 5px; }
+  .crow input { padding: 7px; font-size: 12px; }
+  .fl { font-size: 12px; }
+  footer { padding-bottom: 20px; }
+}
+
 </style>
 </head>
 <body>
@@ -149,7 +203,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.4';
+const APP_VERSION = 'v1.5';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
