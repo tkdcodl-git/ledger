@@ -268,7 +268,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   /* v2.0 합계 행 최하단 고정 + 상단 메뉴 여백 */
   #dash .dt tr.r1 td.its, #history .dt tr.r1 td.its { padding-bottom: 5px; }
   #dash .dt tr.sr td, #history .dt tr.sr td { padding-top: 5px; padding-bottom: 7px; border-left: 1px solid #e6ebe9; }
-  #tabs { margin-top: 24px !important; }
+  #tabs { margin-top: 12px !important; }
 
   /* v2.2 표 전체 7px, 년월 최소 너비, 헤더·합계 행 높이 축소 */
   #dash .dt, #history .dt { font-size: 7px; }
@@ -298,8 +298,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 
 /* v2.4 디자인: 따뜻한 오프화이트 · 큰 라운드 카드 · 알약형 탭/버튼 */
 :root { --bg: #f4f3ef; --ink: #15171a; --mute: #7b8088; --line: #ebe9e3; --dark: #15171a; }
-html { background: var(--bg); }
-body { background: radial-gradient(720px 320px at 10% -8%, #ebe7fb 0, transparent 65%), radial-gradient(640px 300px at 100% 0, #e3f3ec 0, transparent 60%), var(--bg); background-repeat: no-repeat; }
+html { min-height: 100%; background: radial-gradient(760px 360px at 8% 0, #ebe7fb 0, transparent 70%), radial-gradient(680px 340px at 100% 0, #def2ee 0, transparent 65%), var(--bg); background-repeat: no-repeat; }
+body { background: transparent; }
 .panel, #dash .panel, #history .panel, #dash > .panel, #history > .panel { border-radius: 22px; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(21,23,26,.04), 0 10px 28px rgba(21,23,26,.05); }
 .seg { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 1px 2px rgba(21,23,26,.04); }
 #tabs .tab { border-radius: 999px; color: var(--mute); font-weight: 600; }
@@ -313,8 +313,10 @@ body { background: radial-gradient(720px 320px at 10% -8%, #ebe7fb 0, transparen
 #drop.over { border-color: var(--dark); background: #fff; }
 .sheet { border-radius: 24px; box-shadow: 0 24px 60px rgba(21,23,26,.25); }
 .modal { background: rgba(21,23,26,.35); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
-.cat i, .track i, .pbar i { background: linear-gradient(90deg, #0f7b5f, #52b99b); }
-.track, .pbar { background: #eceae4; }
+.cat i, .pbar i { background: linear-gradient(90deg, #5ab9aa, #47a3de); }
+.track i { background: linear-gradient(90deg, #f5b95e, #ee8450); }
+.track { background: #f7f0e6; }
+.pbar { background: #e4f1f3; }
 textarea { background: #faf9f6; border-radius: 14px; }
 td select { border-radius: 999px; background: #faf9f6; }
 :focus-visible { outline-color: var(--dark); }
@@ -397,7 +399,7 @@ td select { border-radius: 999px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v2.4';
+const APP_VERSION = 'v2.6';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -630,7 +632,7 @@ const lns = items => items.map(i => `<div class="ln"><span>${esc(i.n)}</span><b>
 const sumLn = (label, v) => `<div class="ln sum"><span>${label}</span><b>${mm(v)}</b></div>`;
 
 function dashboardRow(m, card) {
-  const L = ledger[m] || {}, c = card[m], cardMan = c ? c.total / 10000 : 0;
+  const L = ledger[m] || {}, c = card[monthAdd(m, -1)], cardMan = c ? c.total / 10000 : 0;
   const inc = (L.income || []).map(i => ({ n: i.n, v: i.v }));
   const exp = [{ n: '카드값', v: -cardMan }, ...(L.expense || []).map(e => ({ n: e.n, v: -Math.abs(e.v) }))];
   const prev = (ledger[monthAdd(m, -1)] || {}).balance;
@@ -653,7 +655,7 @@ function drawDash() {
   // 최근 6개월 카드값
   const ms = Array.from({ length: 6 }, (_, i) => monthAdd(m1, i - 5));
   const trend = ms.map(m => {
-    const L = ledger[m], c = card[m];
+    const L = ledger[m], c = card[monthAdd(m, -1)]; // 카드값은 전월 카드내역
     return {
       bal: L && L.balance != null ? L.balance : null,
       inc: L ? (L.income || []).reduce((a, i) => a + i.v, 0) : null,
@@ -683,7 +685,7 @@ function trendSVG(labels, data) {
   const bars = data.map((d, i) => {
     if (d.bal == null) return '';
     const top = y(Math.max(d.bal, 0)), h = base - top;
-    return `<rect x="${cx(i) - bw / 2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="#cfe2d9"/><text x="${cx(i)}" y="${h >= 14 ? base - 4 : top - 4}" text-anchor="middle" font-size="9" fill="#2f5d4c">${mm(d.bal)}</text>`;
+    return `<rect x="${cx(i) - bw / 2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="url(#gBal)"/><text x="${cx(i)}" y="${h >= 14 ? base - 4 : top - 4}" text-anchor="middle" font-size="9" fill="#1f6f68">${mm(d.bal)}</text>`;
   }).join('');
   const line = (key, color) => {
     const pts = data.map((d, i) => d[key] == null ? null : [cx(i), y(d[key])]).filter(Boolean);
@@ -692,12 +694,12 @@ function trendSVG(labels, data) {
   const lbl = data.map((d, i) => {
     const up = d.inc != null && d.exp != null ? d.inc >= d.exp : true; // 값이 큰 쪽 라벨은 위, 작은 쪽은 아래
     let s = '';
-    if (d.inc != null) s += `<text x="${cx(i)}" y="${y(d.inc) + (up ? -7 : 14)}" text-anchor="middle" font-size="9" fill="#0f7b5f" ${halo}>${mm(d.inc)}</text>`;
-    if (d.exp != null) s += `<text x="${cx(i)}" y="${y(d.exp) + (up ? 14 : -7)}" text-anchor="middle" font-size="9" fill="#b4492f" ${halo}>${mm(d.exp)}</text>`;
+    if (d.inc != null) s += `<text x="${cx(i)}" y="${y(d.inc) + (up ? -7 : 14)}" text-anchor="middle" font-size="9" fill="#2c8f87" ${halo}>${mm(d.inc)}</text>`;
+    if (d.exp != null) s += `<text x="${cx(i)}" y="${y(d.exp) + (up ? 14 : -7)}" text-anchor="middle" font-size="9" fill="#c4465a" ${halo}>${mm(d.exp)}</text>`;
     return s;
   }).join('');
   const xl = labels.map((l, i) => `<text x="${cx(i)}" y="${H - 9}" text-anchor="middle" font-size="10" fill="#69766f">${l}</text>`).join('');
-  return `<div class="lg"><span><i style="background:#cfe2d9"></i>잔액</span><span><i style="background:#0f7b5f"></i>수입 합계</span><span><i style="background:#b4492f"></i>지출 합계</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 6개월 잔액, 수입, 지출(만원)">${g}${bars}${line('inc', '#0f7b5f')}${line('exp', '#b4492f')}${lbl}${xl}</svg>`;
+  return `<div class="lg"><span><i style="background:linear-gradient(#5ab9aa,#47a3de);opacity:.6"></i>잔액</span><span><i style="background:#52b5ad"></i>수입 합계</span><span><i style="background:#e0687a"></i>지출 합계</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 6개월 잔액, 수입, 지출(만원)"><defs><linearGradient id="gBal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ab9aa" stop-opacity=".55"/><stop offset="1" stop-color="#47a3de" stop-opacity=".35"/></linearGradient></defs>${g}${bars}${line('inc', '#52b5ad')}${line('exp', '#e0687a')}${lbl}${xl}</svg>`;
 }
 function lineSVG(labels, vals, compact = false) {
   const W = compact && window.matchMedia('(max-width:600px)').matches ? 340 : 560, H = compact ? 150 : 240, pl = 40, pr = 14, pt = 18, pb = 24, max = Math.max(1, ...vals) * 1.15;
@@ -780,12 +782,31 @@ function openLedger(m) {
   const L = ledger[m], isNew = !L, pinned = (k, n) => fixed[k].some(f => f.n === n);
   const src = k => isNew ? fixed[k].map(f => ({ n: f.n, v: String(f.v), pin: true })) : (L[k] || []).map(x => ({ n: x.n, v: String(x.v), pin: pinned(k, x.n) }));
   led = { m, balance: !isNew && L.balance != null ? String(L.balance) : '', income: src('income'), expense: src('expense'), note: isNew ? memoTpl : (L.note || '') };
+  { const c = calcBal(); led.balAuto = c != null && (isNew || L.balance == null || Math.abs(c - L.balance) < 0.06); }
   renderLedger();
 }
+// 잔액 자동 계산: 전월 잔액 + 수입 − (전월 카드값 + 그 밖의 지출)
+function calcBal() {
+  const pm = monthAdd(led.m, -1), prev = (ledger[pm] || {}).balance;
+  if (prev == null) return null;
+  const c = cardByMonth()[pm], card = c ? c.total / 10000 : 0;
+  const inc = led.income.reduce((a, r) => a + num(r.v), 0), exp = led.expense.reduce((a, r) => a + Math.abs(num(r.v)), 0);
+  return Math.round((prev + inc - card - exp) * 10) / 10;
+}
+function autoBal() {
+  if (!led.balAuto) return;
+  const c = calcBal(); if (c == null) return;
+  led.balance = String(c);
+  const b = document.querySelector('#sheet [data-f="balance"]'); if (b) b.value = led.balance;
+}
 function renderLedger(msg, ok) {
+  if (led.balAuto) { const c = calcBal(); if (c != null) led.balance = String(c); }
+  const pm = monthAdd(led.m, -1), prevB = (ledger[pm] || {}).balance, cardP = ((cardByMonth()[pm] || { total: 0 }).total) / 10000;
+  const hint = prevB != null ? `잔액 = 전월 잔액 ${mm(prevB)} + 수입 − 지출(전월 카드값 ${mm(cardP)} 포함)` : '전월 잔액이 없어 직접 입력해요.';
   const rows = (k, list) => list.map((r, i) => `<div class="crow"><input lang="ko" data-f="${k}N" data-i="${i}" list="${k}Names" value="${esc(r.n)}" placeholder="항목"><input data-f="${k}V" data-i="${i}" value="${esc(r.v)}" inputmode="decimal" placeholder="만원" style="max-width:90px;text-align:right"><button class="btn sm pinb ${r.pin ? 'on' : ''}" data-lpin="${k}:${i}" aria-pressed="${!!r.pin}" title="매월 고정 항목으로 저장/해제">고정</button><button class="x" data-ldel="${k}:${i}" aria-label="삭제">×</button></div>`).join('');
   openModal(`<h2>${led.m.replace('-', '년 ')}월 정보 입력 <span class="muted">(단위: 만원)</span></h2>
     <label class="fl">잔액<input data-f="balance" value="${esc(led.balance)}" inputmode="decimal" placeholder="예: 168.9"></label>
+    <div class="bar" style="margin:-4px 0 8px"><span class="muted" style="flex:1">${esc(hint)}${prevB != null ? (led.balAuto ? ' · 자동 계산 중' : ' · 직접 입력됨') : ''}</span>${prevB != null ? '<button class="btn sm" data-balauto>자동 계산</button>' : ''}</div>
     <div class="fl">수입 항목${rows('in', led.income)}<button class="btn sm" data-ladd="in">+ 수입 항목</button></div>
     <div class="fl">지출 항목 <span class="muted">(카드값은 자동 계산)</span>${rows('ex', led.expense)}<button class="btn sm" data-ladd="ex">+ 지출 항목</button></div>
     <p class="muted" style="margin:0">'고정'을 켠 항목은 저장할 때 매월 고정 항목이 되어, 새 달을 열면 자동으로 채워져요.</p>
@@ -867,6 +888,7 @@ $('modal').onclick = e => {
   if (d.ladd) { led[d.ladd === 'in' ? 'income' : 'expense'].push({ n: '', v: '' }); return renderLedger(); }
   if (d.ldel) { const [k, i] = d.ldel.split(':'); led[k === 'in' ? 'income' : 'expense'].splice(+i, 1); return renderLedger(); }
   if (d.lpin) { const [k, i] = d.lpin.split(':'), r = led[k === 'in' ? 'income' : 'expense'][+i]; r.pin = !r.pin; return renderLedger(); }
+  if ('balauto' in d) { led.balAuto = true; return renderLedger(); }
   if (d.memo) return memoTemplate(d.memo);
   if (e.target.id === 'ledSave') return saveLedger();
   if (e.target.id === 'pickGo') { const v = $('pickMonth').value; if (!/^\d{4}-\d{2}$/.test(v)) return $('pickMsg').classList.remove('hide'); closeModal(); return openLedger(v); }
@@ -875,8 +897,9 @@ $('modal').onclick = e => {
 $('modal').oninput = e => {
   const d = e.target.dataset;
   if (d.ci != null) catRows[+d.ci].name = e.target.value;
-  else if (d.f === 'balance' || d.f === 'note') led[d.f] = e.target.value;
-  else if (d.f) { const k = d.f.startsWith('in') ? 'income' : 'expense'; led[k][+d.i][d.f.endsWith('N') ? 'n' : 'v'] = e.target.value; }
+  else if (d.f === 'balance') { led.balance = e.target.value; led.balAuto = false; }
+  else if (d.f === 'note') led.note = e.target.value;
+  else if (d.f) { const k = d.f.startsWith('in') ? 'income' : 'expense'; led[k][+d.i][d.f.endsWith('N') ? 'n' : 'v'] = e.target.value; autoBal(); }
 };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
