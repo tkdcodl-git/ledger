@@ -45,8 +45,6 @@ td select{border:1px solid var(--line);border-radius:6px;padding:3px 6px;backgro
 textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical;font:13.5px/1.6 "Pretendard Variable",sans-serif;background:#fafcfb}
 .total{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
 .muted{color:var(--mute);font-size:13px}
-.login{max-width:360px;margin:60px auto}
-.login input{width:100%;margin:6px 0;padding:10px;border:1px solid var(--line);border-radius:8px}
 .hide{display:none!important}
 label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--mute)}
 </style>
@@ -54,19 +52,9 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 <body>
 <header>
   <h1>카드내역 분류</h1>
-  <span id="who" class="muted"></span>
-  <button class="btn hide" id="logout">로그아웃</button>
 </header>
 
-<section id="loginView" class="login panel hide">
-  <h2>로그인</h2>
-  <input id="em" type="email" placeholder="이메일" autocomplete="email">
-  <input id="pw" type="password" placeholder="비밀번호 (6자 이상)" autocomplete="current-password">
-  <div class="bar" style="margin-top:8px"><button class="btn primary" id="signin">로그인</button><button class="btn" id="signup">가입</button></div>
-  <div id="loginMsg" class="muted"></div>
-</section>
-
-<main id="app" class="hide">
+<main id="app">
   <div>
     <div class="panel">
       <h2>카드내역 올리기</h2>
@@ -108,40 +96,18 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 <script>
 // ▼ 본인 Supabase 값으로 교체 (anon 키는 공개해도 되는 키입니다)
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
-const CATS = ['마트/반찬','백화점/외식','주유','병원/약국','관리비','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';const CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const won = n => n.toLocaleString('ko-KR');
 const man = n => (Math.round(n / 1000) / 10).toString();
 
-let sb, session = null;
+let sb;
 let txs = [], rules = [], removed = new Set(), rulesDirty = new Set();
 
 try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) { setStatus('Supabase 설정을 확인하세요: ' + e.message, true); }
 
 function setStatus(t, err) { const s = $('status'); s.textContent = t; s.className = err ? 'err' : ''; }
-
-// ---------- 로그인 ----------
-async function boot() {
-  const { data } = await sb.auth.getSession();
-  session = data.session; render_auth();
-  sb.auth.onAuthStateChange((_e, s) => { session = s; render_auth(); });
-}
-async function render_auth() {
-  const on = !!session;
-  $('loginView').classList.toggle('hide', on);
-  $('app').classList.toggle('hide', !on);
-  $('logout').classList.toggle('hide', !on);
-  $('who').textContent = on ? session.user.email : '';
-  if (on) await loadAll();
-}
-async function auth(kind) {
-  const r = await sb.auth[kind === 'up' ? 'signUp' : 'signInWithPassword']({ email: $('em').value.trim(), password: $('pw').value });
-  $('loginMsg').textContent = r.error ? r.error.message : (kind === 'up' && !r.data.session ? '확인 메일을 보냈어요. 인증 후 로그인하세요.' : '');
-}
-$('signin').onclick = () => auth('in'); $('signup').onclick = () => auth('up');
-$('logout').onclick = () => sb.auth.signOut();
 
 // ---------- 데이터 ----------
 async function loadAll() {
@@ -162,8 +128,8 @@ async function save() {
   const rows = txs.filter(t => !t.saved).map(t => ({ hash: t.hash, tx_date: t.date, merchant: t.merchant, amount: t.amount, category: t.category }));
   const rl = rules.filter(r => rulesDirty.has(r.keyword));
   let err;
-  if (rows.length) err = (await sb.from('transactions').upsert(rows, { onConflict: 'user_id,hash' })).error;
-  if (!err && rl.length) err = (await sb.from('rules').upsert(rl, { onConflict: 'user_id,keyword' })).error;
+  if (rows.length) err = (await sb.from('transactions').upsert(rows, { onConflict: 'hash' })).error;
+  if (!err && rl.length) err = (await sb.from('rules').upsert(rl, { onConflict: 'keyword' })).error;
   if (!err && removed.size) err = (await sb.from('transactions').delete().in('hash', [...removed])).error;
   if (err) return setStatus('저장 실패: ' + err.message, true);
   txs.forEach(t => t.saved = true); removed.clear(); rulesDirty.clear();
@@ -199,7 +165,7 @@ async function toChunks(file) {
 async function analyze(chunk) {
   const r = await fetch('/api/analyze', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...chunk, categories: CATS })
   });
   const j = await r.json().catch(() => ({}));
@@ -279,7 +245,7 @@ $('rows').onclick = e => {
 $('copy').onclick = async () => { await navigator.clipboard.writeText($('memo').value); $('copy').textContent = '복사됨'; setTimeout(() => $('copy').textContent = '복사', 1200); };
 window.addEventListener('beforeunload', e => { if (txs.some(t => !t.saved)) { e.preventDefault(); e.returnValue = ''; } });
 
-if (sb) boot();
+if (sb) loadAll();
 </script>
 </body>
 </html>
