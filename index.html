@@ -364,7 +364,8 @@ td select { border-radius: 8px; background: #faf9f6; }
         <h2 style="margin:0">거래 내역</h2>
         <button class="btn sm" id="manualAdd">+ 직접 입력</button>
         <select id="month" class="btn"></select>
-        <label class="chk"><input type="checkbox" id="sameMerchant" checked>같은 가맹점도 함께 변경하고 기억</label>
+        <select id="catFilter" class="btn" aria-label="분류 필터"></select>
+        <label class="chk"><input type="checkbox" id="sameMerchant" checked>같은 가맹점의 기존 내역도 함께 변경</label>
         <span class="sp"></span>
         <button class="btn primary" id="save" disabled>저장</button>
       </div>
@@ -381,12 +382,6 @@ td select { border-radius: 8px; background: #faf9f6; }
       <div class="total" id="total">0만원</div>
       <div id="cats" style="margin-top:10px"></div>
     </div>
-    <div class="panel">
-      <h2>가계부 비고란용 텍스트</h2>
-      <label class="chk" style="margin-bottom:8px">기준 <input id="th" type="number" value="5" min="0" step="1" style="width:56px;padding:4px;border:1px solid var(--line);border-radius:6px">만원 이상 분류만 표시</label>
-      <textarea id="memo" readonly></textarea>
-      <div class="bar" style="margin:8px 0 0"><button class="btn" id="copy">복사</button></div>
-    </div>
   </aside>
 </main>
 
@@ -399,7 +394,7 @@ td select { border-radius: 8px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v3.2';
+const APP_VERSION = 'v3.3';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -439,7 +434,12 @@ async function loadAll() {
 }
 function ruleFor(m) {
   const hit = rules.filter(r => m.includes(r.keyword)).sort((a, b) => b.keyword.length - a.keyword.length)[0];
-  return hit && hit.category;
+  if (hit) return hit.category;
+  // 규칙이 없으면 과거에 저장된 같은 가맹점 내역에서 가장 많이 쓴 분류를 따라감
+  const cnt = {};
+  txs.forEach(t => { if (t.saved && t.merchant === m) cnt[t.category] = (cnt[t.category] || 0) + 1; });
+  const best = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
+  return best && best[0];
 }
 async function save() {
   const rows = txs.filter(t => !t.saved).map(t => ({ hash: t.hash, tx_date: t.date, merchant: t.merchant, amount: t.amount, category: t.category }));
@@ -612,11 +612,13 @@ function refresh() {
   $('month').innerHTML = months.map(m => `<option value="${m}">${m.replace('-', '년 ')}월</option>`).join('');
   if (!monthInit) { $('month').value = monthAdd(nowMonth(), -1); monthInit = true; } // 처음 접속 시 전월을 기본으로
   else if (months.includes(cur)) $('month').value = cur;
+  const fcur = $('catFilter').value, fcats = [...new Set([...CATS, ...txs.map(t => t.category)])];
+  $('catFilter').innerHTML = '<option value="">전체 분류</option>' + fcats.map(c => `<option>${esc(c)}</option>`).join('');
+  if (fcats.includes(fcur)) $('catFilter').value = fcur;
   draw(); drawDash();
 }
 function draw() {
-  const m = $('month').value, list = txs.filter(t => t.date.startsWith(m));
-  $('empty').classList.toggle('hide', txs.length > 0);
+  const m = $('month').value, all = txs.filter(t => t.date.startsWith(m)), f = $('catFilter').value, list = f ? all.filter(t => t.category === f) : all;
   $('rows').innerHTML = list.map(t => `<tr class="${t.fresh && !t.saved ? 'new' : ''}">
     <td class="txdate">${esc(t.date.slice(5).replace('-', '/'))}</td><td class="merchant">${esc(t.merchant)}</td>
      <td class="category"><select data-h="${esc(t.hash)}">${(CATS.includes(t.category) ? CATS : [...CATS, t.category]).map(c => `<option${c === t.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
@@ -624,23 +626,22 @@ function draw() {
      <td class="deletecell"><button class="x" data-d="${esc(t.hash)}" aria-label="삭제">×</button></td></tr>`).join('');
   $('save').disabled = !(txs.some(t => !t.saved) || removed.size || rulesDirty.size);
   const sum = {}; let total = 0;
-  list.forEach(t => { sum[t.category] = (sum[t.category] || 0) + t.amount; total += t.amount; });
+  all.forEach(t => { sum[t.category] = (sum[t.category] || 0) + t.amount; total += t.amount; });
   $('total').textContent = man(total) + '만원';
   const entries = Object.entries(sum).sort((a, b) => b[1] - a[1]), max = Math.max(1, ...entries.map(e => Math.abs(e[1])));
   $('cats').innerHTML = entries.map(([c, v]) => `<div class="cat"><span>${esc(c)}</span><i style="width:${Math.max(2, Math.abs(v) / max * 90)}px"></i><span class="v">${man(v)}</span></div>`).join('');
-  const th = Number($('th').value || 0) * 10000;
-  $('memo').value = entries.length ? `■ 카드값 (${$('th').value}만 이상)\n- ` + entries.filter(e => e[1] >= th).map(e => `${e[0]}(${man(e[1])})`).join(' ') + `\n\n합계 ${man(total)}` : '';
+  $('empty').textContent = txs.length ? '이 조건에 맞는 내역이 없어요.' : '아직 내역이 없어요. 위에서 카드내역을 올려보세요.';
+  $('empty').classList.toggle('hide', list.length > 0);
 }
-$('month').onchange = draw; $('th').oninput = draw;
+$('month').onchange = draw; $('catFilter').onchange = draw;
 $('rows').onchange = e => {
   const h = e.target.dataset.h; if (!h) return;
   const t = txs.find(x => x.hash === h); t.category = e.target.value; t.saved = false; t.fresh = false;
-  if ($('sameMerchant').checked) {
-    txs.forEach(x => { if (x.merchant === t.merchant && x.category !== t.category) { x.category = t.category; x.saved = false; } });
-    const r = rules.find(x => x.keyword === t.merchant);
-    if (r) r.category = t.category; else rules.push({ keyword: t.merchant, category: t.category });
-    rulesDirty.add(t.merchant);
-  }
+  // 직접 바꾼 분류는 항상 기억해서 앞으로 올리는 같은 가맹점에도 적용 (저장 필요)
+  const r = rules.find(x => x.keyword === t.merchant);
+  if (r) r.category = t.category; else rules.push({ keyword: t.merchant, category: t.category });
+  rulesDirty.add(t.merchant);
+  if ($('sameMerchant').checked) txs.forEach(x => { if (x.merchant === t.merchant && x.category !== t.category) { x.category = t.category; x.saved = false; } });
   draw();
 };
 $('rows').onclick = e => {
@@ -648,7 +649,6 @@ $('rows').onclick = e => {
   const t = txs.find(x => x.hash === h); if (t.saved) removed.add(h);
   txs = txs.filter(x => x.hash !== h); refresh();
 };
-$('copy').onclick = async () => { await navigator.clipboard.writeText($('memo').value); $('copy').textContent = '복사됨'; setTimeout(() => $('copy').textContent = '복사', 1200); };
 window.addEventListener('beforeunload', e => { if (txs.some(t => !t.saved)) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---------- 대시보드 · 설정 ----------
@@ -670,13 +670,18 @@ function latestMonth() {
 const lns = items => items.map(i => `<div class="ln"><span>${esc(i.n)}</span><b>${mm(i.v)}</b></div>`).join('');
 const sumLn = (label, v) => `<div class="ln sum"><span>${label}</span><b>${mm(v)}</b></div>`;
 
+// 카드값 비고 자동 문구 (전월 카드내역, 5만원 이상 분류)
+function cardMemoAuto(m) {
+  const c = cardByMonth()[monthAdd(m, -1)];
+  return c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
+}
 function dashboardRow(m, card) {
   const L = ledger[m] || {}, c = card[monthAdd(m, -1)], cardMan = c ? c.total / 10000 : 0;
   const inc = (L.income || []).map(i => ({ n: i.n, v: i.v }));
   const exp = [{ n: '카드값', v: -cardMan }, ...(L.expense || []).map(e => ({ n: e.n, v: -Math.abs(e.v) }))];
   const prev = (ledger[monthAdd(m, -1)] || {}).balance;
   const diff = (L.balance != null && prev != null) ? L.balance - prev : null;
-  const memo = c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
+  const memo = typeof L.cardMemo === 'string' ? L.cardMemo.trim() : cardMemoAuto(m); // 직접 고친 문구가 있으면 그것을 사용
   return `<tr class="r1"><td class="c" rowspan="2">${m.replace('-', '')}<br><button class="btn sm" data-m="${m}">입력</button></td>
     <td class="n" rowspan="2">${L.balance != null ? mm(L.balance) : '-'}</td>
     <td class="n ${diff < 0 ? 'neg' : ''}" rowspan="2">${diff != null ? mm(diff) : '-'}</td>
@@ -821,7 +826,7 @@ function openLedger(m) {
   const L = ledger[m], isNew = !L, pinned = (k, n) => fixed[k].some(f => f.n === n);
   const sv = (k, v) => String(k === 'expense' ? Math.abs(v) : v); // 지출은 양수로 보여줌
   const src = k => isNew ? fixed[k].map(f => ({ n: f.n, v: sv(k, f.v), pin: true })) : (L[k] || []).map(x => ({ n: x.n, v: sv(k, x.v), pin: pinned(k, x.n) }));
-  led = { m, balance: !isNew && L.balance != null ? String(L.balance) : '', income: src('income'), expense: src('expense'), note: isNew ? memoTpl : (L.note || '') };
+  led = { m, balance: !isNew && L.balance != null ? String(L.balance) : '', income: src('income'), expense: src('expense'), note: isNew ? memoTpl : (L.note || ''), cardMemo: !isNew && typeof L.cardMemo === 'string' ? L.cardMemo : cardMemoAuto(m) };
   { const c = calcBal(); led.balAuto = c != null && (isNew || L.balance == null || Math.abs(c - L.balance) < 0.06); }
   renderLedger();
 }
@@ -850,6 +855,8 @@ function renderLedger(msg, ok) {
     <div class="fl">수입 항목${rows('in', led.income)}<button class="btn sm" data-ladd="in">+ 수입 항목</button></div>
     <div class="fl">지출 항목 <span class="muted">(양수로 입력하면 자동으로 − 처리 · 카드값은 자동 계산)</span>${rows('ex', led.expense)}<button class="btn sm" data-ladd="ex">+ 지출 항목</button></div>
     <p class="muted" style="margin:0">'고정'을 켠 항목은 저장할 때 매월 고정 항목이 되어, 새 달을 열면 자동으로 채워져요.</p>
+    <div class="fl">카드값 비고 <span class="muted">(전월 카드내역 5만원 이상 · 자유롭게 수정)</span><textarea lang="ko" data-f="cardMemo" style="min-height:70px">${esc(led.cardMemo)}</textarea>
+      <div class="bar" style="margin:6px 0 0"><button class="btn sm" data-cmauto>자동 문구로 되돌리기</button></div></div>
     <div class="fl">메모<textarea lang="ko" data-f="note" style="min-height:90px">${esc(led.note)}</textarea>
       <div class="bar" style="margin:6px 0 0"><button class="btn sm" data-memo="load">양식 불러오기</button><button class="btn sm" data-memo="save">지금 메모를 양식으로 저장</button></div></div>
     <p class="${msg ? '' : 'hide'}" style="color:var(${ok ? '--accent' : '--warn'})">${esc(msg || '')}</p>
@@ -859,6 +866,7 @@ async function saveLedger() {
   // 지출은 부호와 상관없이 양수로 저장 (화면·계산에서 자동으로 음수 처리)
   const clean = (l, abs) => l.filter(r => r.n.trim() || r.v.trim()).map(r => ({ n: r.n.trim() || '기타', v: abs ? Math.abs(num(r.v)) : num(r.v) }));
   const data = { balance: led.balance.trim() === '' ? null : num(led.balance), income: clean(led.income), expense: clean(led.expense, true), note: led.note.trim() };
+  { const cm = led.cardMemo.trim(); if (cm !== cardMemoAuto(led.m).trim()) data.cardMemo = cm; } // 자동 문구와 다를 때만 저장
   // 고정 항목: 켠 항목은 이름·금액 갱신, 끈 항목은 제거 (이 달에 없는 항목은 그대로 둠)
   const nf = { income: fixed.income.slice(), expense: fixed.expense.slice() };
   [['income', led.income], ['expense', led.expense]].forEach(([k, list]) => list.filter(r => r.n.trim() || r.v.trim()).forEach(r => {
@@ -931,6 +939,7 @@ $('modal').onclick = e => {
   if (d.ladd) { led[d.ladd === 'in' ? 'income' : 'expense'].push({ n: '', v: '' }); return renderLedger(); }
   if (d.ldel) { const [k, i] = d.ldel.split(':'); led[k === 'in' ? 'income' : 'expense'].splice(+i, 1); return renderLedger(); }
   if (d.lpin) { const [k, i] = d.lpin.split(':'), r = led[k === 'in' ? 'income' : 'expense'][+i]; r.pin = !r.pin; return renderLedger(); }
+  if ('cmauto' in d) { led.cardMemo = cardMemoAuto(led.m); return renderLedger(); }
   if ('balauto' in d) { led.balAuto = true; return renderLedger(); }
   if (d.memo) return memoTemplate(d.memo);
   if (e.target.id === 'ledSave') return saveLedger();
@@ -942,6 +951,7 @@ $('modal').oninput = e => {
   if (d.ci != null) catRows[+d.ci].name = e.target.value;
   else if (d.f === 'balance') { led.balance = e.target.value; led.balAuto = false; }
   else if (d.f === 'note') led.note = e.target.value;
+  else if (d.f === 'cardMemo') led.cardMemo = e.target.value;
   else if (d.f) { const k = d.f.startsWith('in') ? 'income' : 'expense'; led[k][+d.i][d.f.endsWith('N') ? 'n' : 'v'] = e.target.value; autoBal(); }
 };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
