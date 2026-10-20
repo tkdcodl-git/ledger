@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>카드내역 분류</title>
+<title>가계부</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
 :root{--bg:#f5f7f6;--card:#fff;--ink:#16211d;--mute:#69766f;--line:#e3e9e6;--accent:#0f7b5f;--accent-soft:#e3f3ed;--warn:#b4492f}
@@ -169,21 +169,67 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash .dt .btn.sm { font-size: 10px; padding: 2px 5px; }
 }
 
+
+@media (max-width: 600px) {
+  header { padding-left: 12px !important; }
+  #tabs { padding-left: 8px !important; padding-right: 8px !important; gap: 3px !important; }
+  #tabs .tab { padding: 6px 8px; font-size: 11px; }
+  #tabs .btn { padding: 5px 7px; font-size: 11px; }
+  main { padding-left: 6px !important; padding-right: 6px !important; }
+  #app .tbl table:not(.dt) { width: 100%; min-width: 0; table-layout: fixed; font-size: 10px; }
+  #app .tbl table:not(.dt) th, #app .tbl table:not(.dt) td { padding: 4px 2px; }
+  #app .tbl table:not(.dt) th:nth-child(1), #app .tbl table:not(.dt) td.txdate { width: 39px; white-space: nowrap; }
+  #app .tbl table:not(.dt) th:nth-child(2), #app .tbl table:not(.dt) td.merchant { width: auto; max-width: none; overflow-wrap: anywhere; }
+  #app .tbl table:not(.dt) th:nth-child(3), #app .tbl table:not(.dt) td.category { width: 76px; }
+  #app .tbl table:not(.dt) th:nth-child(4), #app .tbl table:not(.dt) td.amount { width: 58px; white-space: nowrap; }
+  #app .tbl table:not(.dt) th.delhead, #app .tbl table:not(.dt) td.deletecell { width: 17px; padding: 0; text-align: center; }
+  #app .tbl table:not(.dt) td.category select { width: 100%; max-width: 100%; min-width: 0; padding: 2px 0; font-size: 9px; }
+  #app .tbl table:not(.dt) .x { width: 16px; padding: 0; font-size: 14px; }
+  #dash, #history { margin: 8px auto 0; padding: 0 6px; }
+  #dash .panel, #history .panel { padding: 8px; margin-bottom: 7px; border-radius: 8px; }
+  #dash h2, #history h2 { font-size: 11px; margin-bottom: 5px; }
+  #dash .tbl, #history .tbl { overflow: visible; }
+  #dash .dt, #history .dt { width: 100% !important; min-width: 0 !important; table-layout: fixed; font-size: 8px; }
+  #dash .dt th, #dash .dt td, #history .dt th, #history .dt td { padding: 3px 1px; line-height: 1.2; overflow-wrap: anywhere; }
+  #dash .dt th:nth-child(1), #dash .dt td:nth-child(1), #history .dt th:nth-child(1), #history .dt td:nth-child(1) { width: 42px; }
+  #dash .dt th:nth-child(2), #dash .dt td:nth-child(2), #history .dt th:nth-child(2), #history .dt td:nth-child(2) { width: 29px; }
+  #dash .dt th:nth-child(3), #dash .dt td:nth-child(3), #history .dt th:nth-child(3), #history .dt td:nth-child(3) { width: 31px; }
+  #dash .dt th:nth-child(4), #dash .dt td:nth-child(4), #history .dt th:nth-child(4), #history .dt td:nth-child(4) { width: 72px; }
+  #dash .dt th:nth-child(5), #dash .dt td:nth-child(5), #history .dt th:nth-child(5), #history .dt td:nth-child(5) { width: 75px; }
+  #dash .dt th:nth-child(6), #dash .dt td:nth-child(6), #history .dt th:nth-child(6), #history .dt td:nth-child(6) { width: auto; }
+  #dash .dt td.memo, #history .dt td.memo { min-width: 0; font-size: 7px; line-height: 1.15; white-space: pre-line; overflow-wrap: anywhere; }
+  #dash .dt .btn.sm, #history .dt .btn.sm { padding: 1px 2px; font-size: 7px; }
+  #dash .muted { font-size: 8px; line-height: 1.25; margin: 4px 0 0; }
+  #dash .dgrid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 6px; margin-top: 7px; }
+  #dash .dgrid .panel { min-width: 0; }
+  #dash #lineChart svg { min-width: 0 !important; width: 100%; height: 88px; display: block; }
+  #dash #lineChart .muted { font-size: 8px; }
+  #dash .bar { gap: 3px; }
+  #dash #catMonth { max-width: 88px; padding: 2px; font-size: 8px; }
+  #dash .hb { gap: 2px; font-size: 7px; margin: 3px 0; }
+  #dash .hb span { width: 43px; font-size: 7px; overflow-wrap: anywhere; }
+  #dash .hb b { width: 58px; font-size: 7px; }
+  #dash .track { min-width: 8px; }
+  #manualAdd { white-space: nowrap; }
+}
+
 </style>
 </head>
 <body>
 <header>
-  <h1>카드내역 분류</h1>
+  <h1>가계부</h1>
 </header>
 
-<nav id="tabs"><button class="tab on" data-t="tx">거래 내역</button><button class="tab" data-t="dash">대시보드</button><span class="sp"></span><button class="btn" id="catBtn">분류 설정</button></nav>
+<nav id="tabs"><button class="tab on" data-t="tx">거래 내역</button><button class="tab" data-t="dash">대시보드</button><button class="tab" data-t="history">전체 누적</button><span class="sp"></span><button class="btn" id="catBtn">분류 설정</button></nav>
+
+<section id="history" class="hide"><div class="panel"><h2>월별 누적 내역</h2><p class="muted">대시보드에서 저장한 월별 잔액·수입·지출·비고가 자동으로 누적됩니다.</p><div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="historyRows"></tbody></table></div></div></section>
 
 <section id="dash" class="hide">
   <div class="panel"><h2>최근 2개월</h2>
     <div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="dashRows"></tbody></table></div>
     <p class="muted">단위: 만원 · 카드값과 비고는 거래 내역에서 자동 계산돼요. 잔액·수입·그 밖의 지출은 '입력'으로 넣어요.</p></div>
   <div class="dgrid">
-    <div class="panel"><h2>최근 12개월 카드값</h2><div id="lineChart"></div></div>
+    <div class="panel"><h2>최근 6개월 카드값</h2><div id="lineChart"></div></div>
     <div class="panel"><div class="bar"><h2 style="margin:0">분류별 비중</h2><select id="catMonth" class="btn"></select></div><div id="catBars"></div></div>
   </div>
 </section>
@@ -204,6 +250,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
     <div class="panel">
       <div class="bar">
         <h2 style="margin:0">거래 내역</h2>
+        <button class="btn sm" id="manualAdd">+ 직접 입력</button>
         <select id="month" class="btn"></select>
         <label class="chk"><input type="checkbox" id="sameMerchant" checked>같은 가맹점도 함께 변경하고 기억</label>
         <span class="sp"></span>
@@ -240,7 +287,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.6';
+const APP_VERSION = 'v1.7';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -409,7 +456,7 @@ async function handle(files) {
 // ---------- 화면 ----------
 function refresh() {
   txs.sort((a, b) => b.date.localeCompare(a.date));
-  const months = [...new Set(txs.map(t => t.date.slice(0, 7)))].sort().reverse();
+  const months = [...new Set([...txs.map(t => t.date.slice(0, 7)), ...Object.keys(ledger || {}), nowMonth()])].sort().reverse();
   const cur = $('month').value;
   $('month').innerHTML = months.map(m => `<option value="${m}">${m.replace('-', '년 ')}월</option>`).join('');
   if (months.includes(cur)) $('month').value = cur;
@@ -465,33 +512,35 @@ function cardByMonth() {
   return o;
 }
 function latestMonth() {
-  const ms = [...txs.map(t => t.date.slice(0, 7)), ...Object.keys(ledger)].sort();
+  const ms = [...txs.map(t => t.date.slice(0, 7)), ...Object.keys(ledger), nowMonth()].sort();
   return ms.length ? ms[ms.length - 1] : nowMonth();
 }
 const lns = items => items.map(i => `<div class="ln"><span>${esc(i.n)}</span><b>${mm(i.v)}</b></div>`).join('');
 const sumLn = (label, v) => `<div class="ln sum"><span>${label}</span><b>${mm(v)}</b></div>`;
 
+function dashboardRow(m, card) {
+  const L = ledger[m] || {}, c = card[m], cardMan = c ? c.total / 10000 : 0;
+  const inc = (L.income || []).map(i => ({ n: i.n, v: i.v }));
+  const exp = [{ n: '카드값', v: -cardMan }, ...(L.expense || []).map(e => ({ n: e.n, v: -Math.abs(e.v) }))];
+  const prev = (ledger[monthAdd(m, -1)] || {}).balance;
+  const diff = (L.balance != null && prev != null) ? L.balance - prev : null;
+  const memo = c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
+  return `<tr><td class="c"><b>${m.replace('-', '')}</b><br><button class="btn sm" data-m="${m}">입력</button></td>
+    <td class="n">${L.balance != null ? mm(L.balance) : '-'}</td>
+    <td class="n ${diff < 0 ? 'neg' : ''}">${diff != null ? mm(diff) : '-'}</td>
+    <td>${lns(inc)}${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</td>
+    <td>${lns(exp)}${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td>
+    <td class="memo">${esc(memo)}${L.note ? '\n\n' + esc(L.note) : ''}</td></tr>`;
+}
 function drawDash() {
-  const card = cardByMonth(), m1 = latestMonth(), m2 = monthAdd(m1, -1), thr = 5;
-  const rowFor = m => {
-    const L = ledger[m] || {}, c = card[m], cardMan = c ? c.total / 10000 : 0;
-    const inc = (L.income || []).map(i => ({ n: i.n, v: i.v }));
-    const exp = [{ n: '카드값', v: -cardMan }, ...(L.expense || []).map(e => ({ n: e.n, v: -Math.abs(e.v) }))];
-    const prev = (ledger[monthAdd(m, -1)] || {}).balance;
-    const diff = (L.balance != null && prev != null) ? L.balance - prev : null;
-    const memo = c ? '■ 카드값 (' + thr + '만 이상)\n- ' + Object.entries(c.cats).filter(e => e[1] / 10000 >= thr).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
-    return `<tr><td class="c"><b>${m.replace('-', '')}</b><br><button class="btn sm" data-m="${m}">입력</button></td>
-      <td class="n">${L.balance != null ? mm(L.balance) : '-'}</td>
-      <td class="n ${diff < 0 ? 'neg' : ''}">${diff != null ? mm(diff) : '-'}</td>
-      <td>${lns(inc)}${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">입력 버튼으로 추가</span>'}</td>
-      <td>${lns(exp)}${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td>
-      <td class="memo">${esc(memo)}${L.note ? '\n\n' + esc(L.note) : ''}</td></tr>`;
-  };
-  $('dashRows').innerHTML = rowFor(m1) + rowFor(m2);
+  const card = cardByMonth(), m1 = latestMonth(), m2 = monthAdd(m1, -1);
+  $('dashRows').innerHTML = [m1, m2].map(m => dashboardRow(m, card)).join('');
+  const allMonths = [...new Set([...Object.keys(ledger), ...Object.keys(card)])].sort().reverse();
+  $('historyRows').innerHTML = allMonths.map(m => dashboardRow(m, card)).join('') || '<tr><td colspan="6">아직 누적된 월별 데이터가 없어요.</td></tr>';
 
-  // 최근 12개월 카드값 선 그래프
-  const ms = Array.from({ length: 12 }, (_, i) => monthAdd(m1, i - 11));
-  $('lineChart').innerHTML = lineSVG(ms.map(m => m.slice(2).replace('-', '.')), ms.map(m => card[m] ? card[m].total / 10000 : 0));
+  // 최근 6개월 카드값
+  const ms = Array.from({ length: 6 }, (_, i) => monthAdd(m1, i - 5));
+  $('lineChart').innerHTML = lineSVG(ms.map(m => m.slice(2).replace('-', '.')), ms.map(m => card[m] ? card[m].total / 10000 : 0), true);
 
   // 분류별 비중
   const opts = [...ms].reverse();
@@ -501,18 +550,50 @@ function drawDash() {
   const tot = cats.reduce((a, e) => a + e[1], 0);
   $('catBars').innerHTML = cats.length ? cats.map(([c, v]) => `<div class="hb"><span>${esc(c)}</span><div class="track"><i style="width:${(v / tot * 100).toFixed(1)}%"></i></div><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('') : '<p class="muted">이 달의 거래 내역이 없어요.</p>';
 }
-
-function lineSVG(labels, vals) {
-  const W = 560, H = 240, pl = 40, pr = 14, pt = 24, pb = 30, max = Math.max(1, ...vals) * 1.15;
+function lineSVG(labels, vals, compact = false) {
+  const W = 560, H = compact ? 150 : 240, pl = 40, pr = 14, pt = 18, pb = 24, max = Math.max(1, ...vals) * 1.15;
   const x = i => pl + i * (W - pl - pr) / (vals.length - 1), y = v => pt + (H - pt - pb) * (1 - v / max);
   let g = '';
   for (let k = 0; k <= 4; k++) { const v = max * k / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e9e6"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="#69766f">${Math.round(v)}</text>`; }
   const pts = vals.map((v, i) => `${x(i)},${y(v)}`).join(' ');
   const dots = vals.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="#0f7b5f"/>` + (v > 0 ? `<text x="${x(i)}" y="${y(v) - 8}" text-anchor="middle" font-size="10" fill="#16211d">${mm(v)}</text>` : '')).join('');
   const xl = labels.map((l, i) => `<text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="10" fill="#69766f">${l}</text>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 12개월 카드값(만원)">${g}<polyline points="${pts}" fill="none" stroke="#0f7b5f" stroke-width="2.5" stroke-linejoin="round"/>${dots}${xl}</svg><div class="muted">단위: 만원</div>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 6개월 카드값(만원)">${g}<polyline points="${pts}" fill="none" stroke="#0f7b5f" stroke-width="2.5" stroke-linejoin="round"/>${dots}${xl}</svg><div class="muted">단위: 만원</div>`;
 }
 
+// ----- 거래 내역 직접 입력 -----
+let manualTx = null;
+function openManualTx() {
+  const today = new Date();
+  const d = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  manualTx = { date: d, merchant: '', amount: '', category: CATS[0] || '기타' };
+  renderManualTx();
+}
+function renderManualTx(msg = '') {
+  openModal(`<h2>거래 내역 직접 입력</h2>
+    <label class="fl">날짜<input id="mtDate" type="date" value="${esc(manualTx.date)}" required></label>
+    <label class="fl">가맹점 / 내용<input id="mtMerchant" lang="ko" value="${esc(manualTx.merchant)}" placeholder="예: 동네 마트" required></label>
+    <label class="fl">금액(원)<input id="mtAmount" inputmode="decimal" value="${esc(manualTx.amount)}" placeholder="예: 12500" required></label>
+    <label class="fl">분류<select id="mtCategory">${CATS.map(c => `<option${c === manualTx.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+    <p class="muted">금액은 지출이면 양수로 입력하세요. 입력 후 저장 버튼을 눌러야 거래 내역에 반영됩니다.</p>
+    <p class="${msg ? '' : 'hide'}" style="color:var(--warn)">${esc(msg)}</p>
+    <div class="bar"><span class="sp"></span><button class="btn" data-close>취소</button><button class="btn primary" id="manualSave">추가</button></div>`);
+}
+function saveManualTx() {
+  manualTx.date = $('mtDate').value;
+  manualTx.merchant = $('mtMerchant').value.trim();
+  manualTx.amount = $('mtAmount').value.trim();
+  manualTx.category = $('mtCategory').value;
+  const amount = num(manualTx.amount);
+  if (!manualTx.date || !manualTx.merchant || !manualTx.amount || !Number.isFinite(amount) || amount <= 0) return renderManualTx('날짜, 가맹점, 0보다 큰 금액을 입력하세요.');
+  const hash = `manual-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+  txs.push({ hash, date: manualTx.date, merchant: manualTx.merchant, amount, category: manualTx.category, saved: false, fresh: true });
+  closeModal();
+  refresh();
+  $('month').value = manualTx.date.slice(0,7);
+  draw();
+  setStatus('직접 입력한 거래가 추가됐어요. 저장 버튼을 눌러 데이터베이스에 저장하세요.');
+}
 // ----- 모달 공통 -----
 const openModal = html => { $('sheet').innerHTML = html; $('modal').classList.remove('hide'); };
 const closeModal = () => $('modal').classList.add('hide');
@@ -588,10 +669,13 @@ async function memoTemplate(kind) {
 // ----- 이벤트 -----
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-  $('app').classList.toggle('hide', b.dataset.t !== 'tx'); $('dash').classList.toggle('hide', b.dataset.t !== 'dash');
-  if (b.dataset.t === 'dash') drawDash();
+  $('app').classList.toggle('hide', b.dataset.t !== 'tx');
+  $('dash').classList.toggle('hide', b.dataset.t !== 'dash');
+  $('history').classList.toggle('hide', b.dataset.t !== 'history');
+  if (b.dataset.t === 'dash' || b.dataset.t === 'history') drawDash();
 });
 $('catBtn').onclick = openCats;
+$('manualAdd').onclick = openManualTx;
 $('catMonth').onchange = e => { dashCatMonth = e.target.value; drawDash(); };
 $('dashRows').onclick = e => { const m = e.target.dataset.m; if (m) openLedger(m); };
 $('modal').onmousedown = e => { downOnBackdrop = e.target === $('modal'); };
@@ -608,6 +692,7 @@ $('modal').onclick = e => {
   if (d.lpin) { const [k, i] = d.lpin.split(':'), r = led[k === 'in' ? 'income' : 'expense'][+i]; r.pin = !r.pin; return renderLedger(); }
   if (d.memo) return memoTemplate(d.memo);
   if (e.target.id === 'ledSave') return saveLedger();
+  if (e.target.id === 'manualSave') return saveManualTx();
 };
 $('modal').oninput = e => {
   const d = e.target.dataset;
