@@ -399,7 +399,7 @@ td select { border-radius: 8px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v3.0';
+const APP_VERSION = 'v3.1';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -536,10 +536,12 @@ const isTimeout = e => /초|시간 초과|504|timeout/i.test((e && e.message) ||
 async function analyzeSplit(c, depth = 0, tries = 0) {
   try { return await analyze(c); }
   catch (e) {
-    // 무료 사용 한도(429)면 잠시 기다렸다가 같은 구간을 다시 시도
-    if (/한도|429/.test((e && e.message) || '') && tries < 3) {
-      const keep = prog.msg; prog.msg = 'AI 사용 한도 대기 중';
-      await new Promise(r => setTimeout(r, 20000));
+    // 무료 한도(429)·AI 과부하(503)면 점점 길게 기다렸다가 같은 구간을 다시 시도
+    const m = (e && e.message) || '';
+    const quota = /한도|429/.test(m), busy = /high demand|overload|unavailable|503|서버 오류 50\d|일시/i.test(m);
+    if ((quota || busy) && tries < 5) {
+      const keep = prog.msg; prog.msg = quota ? 'AI 사용 한도 대기 중' : 'AI 서버가 바빠서 잠시 기다리는 중';
+      await new Promise(r => setTimeout(r, (quota ? 20000 : 6000) * (tries + 1) + Math.random() * 3000));
       prog.msg = keep;
       return analyzeSplit(c, depth, tries + 1);
     }
@@ -579,8 +581,8 @@ async function handle(files) {
     setStatus('');
     progStart(chunks.length, 'AI가 내역을 읽는 중');
     let all = [], fails = [];
-    for (let i = 0; i < chunks.length; i += 3) {
-      const batch = chunks.slice(i, i + 3);
+    for (let i = 0; i < chunks.length; i += 2) {
+      const batch = chunks.slice(i, i + 2);
       prog.inflight = batch.length; prog.start = Date.now();
       const part = await Promise.all(batch.map(c => analyzeSplit(c).catch(e => { fails.push(e.message); return []; }).then(r => { prog.done++; prog.inflight--; return r; })));
       part.forEach(p => all.push(...p));
