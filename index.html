@@ -46,6 +46,10 @@ textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:
 .total{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
 .muted{color:var(--mute);font-size:13px}
 .hide{display:none!important}
+#prog{margin-top:12px}
+.pbar{height:10px;background:var(--accent-soft);border-radius:6px;overflow:hidden}
+.pbar i{display:block;height:100%;width:0;background:var(--accent);border-radius:6px;transition:width .3s ease}
+#ptxt{display:flex;justify-content:space-between;margin-top:6px;font-size:13.5px;color:var(--mute);font-variant-numeric:tabular-nums}
 footer{text-align:center;color:var(--mute);font-size:12.5px;padding:8px 0 28px}
 label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--mute)}
 </style>
@@ -61,6 +65,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
       <h2>카드내역 올리기</h2>
       <div id="drop" tabindex="0"><b>이미지·PDF·CSV·엑셀을 끌어놓거나 눌러서 선택</b><br>캡처가 길어도 자동으로 나눠서 읽어요. 여러 파일 가능.</div>
       <input id="file" type="file" multiple class="hide">
+      <div id="prog" class="hide"><div class="pbar"><i id="pfill"></i></div><div id="ptxt"><span id="pmsg"></span><span id="ppct"></span></div></div>
       <div id="status"></div>
     </div>
     <div class="panel">
@@ -102,7 +107,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.1';
+const APP_VERSION = 'v1.2';
 const CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -191,15 +196,37 @@ async function toChunks(file) {
 }
 
 async function analyze(chunk) {
-  const r = await fetch('/api/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...chunk, categories: CATS })
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || ('서버 오류 ' + r.status));
-  return j.transactions;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 90000);
+  try {
+    const r = await fetch('/api/analyze', {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...chunk, categories: CATS })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('서버 오류 ' + r.status + (r.status === 504 ? ' (시간 초과)' : '')));
+    return j.transactions;
+  } catch (e) {
+    throw new Error(e.name === 'AbortError' ? '응답이 90초 넘게 오지 않아 중단했어요. 다시 시도해보세요.' : e.message);
+  } finally { clearTimeout(timer); }
 }
+
+// 진행바: 단계가 끝날 때마다 올라가고, 응답을 기다리는 동안에도 천천히 차오름
+const prog = { total: 0, done: 0, inflight: 0, start: 0, timer: null, msg: '' };
+function progDraw() {
+  const el = (Date.now() - prog.start) / 1000;
+  const frac = 0.9 * (1 - Math.exp(-el / 25)); // 진행 중인 요청은 최대 90%까지만
+  const pct = Math.min(99, Math.round(5 + 95 * (prog.done + prog.inflight * frac) / prog.total));
+  $('pfill').style.width = pct + '%';
+  $('ppct').textContent = pct + '%';
+  $('pmsg').textContent = `${prog.msg} · ${prog.done}/${prog.total} 완료 · ${Math.round((Date.now() - prog.t0) / 1000)}초 경과`;
+}
+function progStart(total, msg) {
+  Object.assign(prog, { total, done: 0, inflight: 0, start: Date.now(), t0: Date.now(), msg });
+  $('prog').classList.remove('hide'); progDraw();
+  clearInterval(prog.timer); prog.timer = setInterval(progDraw, 250);
+}
+function progEnd() { clearInterval(prog.timer); $('pmsg').textContent = `분석 완료 · ${Math.round((Date.now() - prog.t0) / 1000)}초`; $('pfill').style.width = '100%'; $('ppct').textContent = '100%'; setTimeout(() => $('prog').classList.add('hide'), 1200); }
 
 async function handle(files) {
   setStatus(`파일 ${files.length}개를 읽는 중…`);
@@ -208,12 +235,16 @@ async function handle(files) {
   try {
     let chunks = [];
     for (const f of files) chunks.push(...await toChunks(f));
-    setStatus(`분석 중… 0/${chunks.length} (잠시 걸려요)`);
-    let all = [], done = 0;
+    setStatus('');
+    progStart(chunks.length, 'AI가 내역을 읽는 중');
+    let all = [], fails = [];
     for (let i = 0; i < chunks.length; i += 3) {
-      const part = await Promise.all(chunks.slice(i, i + 3).map(c => analyze(c).then(r => { setStatus(`분석 중… ${++done}/${chunks.length}`); return r; })));
+      const batch = chunks.slice(i, i + 3);
+      prog.inflight = batch.length; prog.start = Date.now();
+      const part = await Promise.all(batch.map(c => analyze(c).catch(e => { fails.push(e.message); return []; }).then(r => { prog.done++; prog.inflight--; return r; })));
       part.forEach(p => all.push(...p));
     }
+    progEnd();
     const seen = {}, existing = new Set(txs.map(t => t.hash));
     let added = 0;
     for (const t of all) {
@@ -224,9 +255,10 @@ async function handle(files) {
       txs.push({ hash, date: t.date, merchant: t.merchant, amount: t.amount, category: ruleFor(t.merchant) || (CATS.includes(t.category) ? t.category : '기타'), saved: false, fresh: true });
       added++;
     }
-    setStatus(`${all.length}건을 읽었고 ${added}건을 새로 추가했어요. 분류를 확인하고 저장하세요.`);
     refresh();
-  } catch (e) { setStatus(e.message, true); }
+    if (fails.length) setStatus(`${fails.length}개 구간 실패: ${fails[0]} (읽은 ${all.length}건은 추가했어요)`, true);
+    else setStatus(`${all.length}건을 읽었고 ${added}건을 새로 추가했어요. 분류를 확인하고 저장하세요.`);
+  } catch (e) { clearInterval(prog.timer); $('prog').classList.add('hide'); setStatus(e.message, true); }
 }
 
 // ---------- 화면 ----------

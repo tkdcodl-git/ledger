@@ -20,14 +20,15 @@ JSON 배열 외의 설명이나 코드블록은 쓰지 마세요.
       : [{ inline_data: { mime_type: media_type, data } }, { text: prompt }];
 
     const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const call = cfg => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
+      signal: AbortSignal.timeout(55000),
       headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { temperature: 0, maxOutputTokens: 16000 }
-      })
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: cfg })
     });
+    // 생각(thinking)을 낮춰 응답 속도를 높임. 지원하지 않으면 옵션 없이 재시도
+    let r = await call({ temperature: 0, maxOutputTokens: 16000, thinkingConfig: { thinkingLevel: 'low' } });
+    if (r.status === 400) r = await call({ temperature: 0, maxOutputTokens: 16000 });
     const j = await r.json();
     if (!r.ok) {
       const msg = r.status === 429 ? '무료 사용 한도에 도달했어요. 잠시 후 다시 시도하세요.' : (j.error?.message || 'AI 호출 실패');
@@ -41,6 +42,7 @@ JSON 배열 외의 설명이나 코드블록은 쓰지 마세요.
       .map(t => ({ date: t.date, merchant: String(t.merchant).trim(), amount: Math.round(Number(t.amount)), category: t.category }));
     res.status(200).json({ transactions });
   } catch (e) {
-    res.status(500).json({ error: String(e.message || e) });
+    const timeout = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    res.status(timeout ? 504 : 500).json({ error: timeout ? 'AI 응답이 55초 안에 오지 않았어요. 파일을 나눠서 다시 올려보세요.' : String(e.message || e) });
   }
 };
