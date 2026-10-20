@@ -59,7 +59,8 @@ th{text-align:center!important}
 #dash{max-width:1180px;margin:16px auto 0;padding:0 20px}
 .dt td{vertical-align:top;border-bottom:1px solid var(--line);padding:10px 8px}
 .dt td.c{text-align:center}
-.dt td.memo{white-space:pre-line;font-size:13.5px;min-width:240px}
+.dt td.memo{white-space:pre-line;font-size:13.5px;min-width:240px;vertical-align:middle}
+.mp+.mp{margin-top:4px}
 .ln{display:flex;justify-content:space-between;gap:14px;font-size:14px;font-variant-numeric:tabular-nums}
 .ln.sum{border-top:1px solid var(--line);margin-top:3px;padding-top:3px}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
@@ -242,15 +243,25 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash .hb b { width: 92px; font-size: 11px; }
   #dash .track { min-width: 20px; }
   #dash .muted { font-size: 10px; }
+
+  /* v1.9 표 가독성: 열 구분선 + 여백, 비고 세로 가운데 */
+  #dash .dt th, #history .dt th { padding: 5px 4px; }
+  #dash .dt td, #history .dt td { padding: 7px 4px; }
+  #dash .dt th:nth-child(n+2), #dash .dt td:nth-child(n+2), #history .dt th:nth-child(n+2), #history .dt td:nth-child(n+2) { border-left: 1px solid #e6ebe9; }
+  #dash .dt th:nth-child(1), #dash .dt td:nth-child(1), #history .dt th:nth-child(1), #history .dt td:nth-child(1) { width: 40px; }
+  #dash .dt th:nth-child(2), #dash .dt td:nth-child(2), #history .dt th:nth-child(2), #history .dt td:nth-child(2) { width: 32px; }
+  #dash .dt th:nth-child(3), #dash .dt td:nth-child(3), #history .dt th:nth-child(3), #history .dt td:nth-child(3) { width: 34px; }
+  #dash .dt th:nth-child(4), #dash .dt td:nth-child(4), #history .dt th:nth-child(4), #history .dt td:nth-child(4) { width: 78px; }
+  #dash .dt th:nth-child(5), #dash .dt td:nth-child(5), #history .dt th:nth-child(5), #history .dt td:nth-child(5) { width: 78px; }
+  #dash .dt .ln, #history .dt .ln { font-size: 8.5px; gap: 6px; }
+  #dash .dt .ln b, #history .dt .ln b { font-size: 8.5px; }
+  #dash .dt td.memo, #history .dt td.memo { vertical-align: middle; font-size: 8px; line-height: 1.2; }
+  #dash .dt .mp + .mp, #history .dt .mp + .mp { margin-top: 3px; }
 }
 
 </style>
 </head>
 <body>
-<header>
-  <h1>가계부</h1>
-</header>
-
 <nav id="tabs"><button class="tab on" data-t="tx">거래 내역</button><button class="tab" data-t="dash">대시보드</button><button class="tab" data-t="history">전체 누적</button><span class="sp"></span><button class="btn" id="catBtn">분류 설정</button></nav>
 
 <section id="history" class="hide"><div class="panel"><h2>월별 누적 내역</h2><p class="muted">대시보드에서 저장한 월별 잔액·수입·지출·비고가 자동으로 누적됩니다.</p><div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="historyRows"></tbody></table></div></div></section>
@@ -318,7 +329,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.8';
+const APP_VERSION = 'v1.9';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -562,7 +573,7 @@ function dashboardRow(m, card) {
     <td class="n ${diff < 0 ? 'neg' : ''}">${diff != null ? mm(diff) : '-'}</td>
     <td>${lns(inc)}${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</td>
     <td>${lns(exp)}${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td>
-    <td class="memo">${esc(memo)}${L.note ? '\n\n' + esc(L.note) : ''}</td></tr>`;
+    <td class="memo">${memo ? `<div class="mp">${esc(memo)}</div>` : ''}${L.note && L.note.trim() ? `<div class="mp">${esc(L.note.trim())}</div>` : ''}</td></tr>`;
 }
 function drawDash() {
   const card = cardByMonth(), m1 = latestMonth(), m2 = monthAdd(m1, -1);
@@ -576,7 +587,7 @@ function drawDash() {
 
   // 분류별 비중
   const opts = [...ms].reverse();
-  if (!opts.includes(dashCatMonth)) dashCatMonth = m1;
+  if (!opts.includes(dashCatMonth)) dashCatMonth = m2; // 기본은 전월(저장 대상 월)
   $('catMonth').innerHTML = opts.map(m => `<option value="${m}"${m === dashCatMonth ? ' selected' : ''}>${m.replace('-', '년 ')}월</option>`).join('');
   const cats = Object.entries((card[dashCatMonth] || { cats: {} }).cats).filter(e => e[1] > 0).sort((a, b) => b[1] - a[1]);
   const tot = cats.reduce((a, e) => a + e[1], 0);
@@ -709,7 +720,9 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
 $('catBtn').onclick = openCats;
 $('manualAdd').onclick = openManualTx;
 $('catMonth').onchange = e => { dashCatMonth = e.target.value; drawDash(); };
-$('dashRows').onclick = e => { const m = e.target.dataset.m; if (m) openLedger(m); };
+const openFromRow = e => { const m = e.target.dataset.m; if (m) openLedger(m); };
+$('dashRows').onclick = openFromRow;
+$('historyRows').onclick = openFromRow;
 $('modal').onmousedown = e => { downOnBackdrop = e.target === $('modal'); };
 $('modal').onclick = e => {
   const d = e.target.dataset;
