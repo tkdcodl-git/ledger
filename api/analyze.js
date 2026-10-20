@@ -3,7 +3,7 @@
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   try {
-    const { media_type, data, text, categories } = req.body || {};
+    const { media_type, data, text, categories, model: reqModel } = req.body || {};
     if (!data && !text) return res.status(400).json({ error: '파일 데이터가 없습니다' });
     if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY 환경변수가 없습니다' });
 
@@ -19,24 +19,27 @@ JSON 배열 외의 설명이나 코드블록은 쓰지 마세요.
       ? [{ text: prompt + '\n\n[내역 데이터]\n' + text }]
       : [{ inline_data: { mime_type: media_type, data } }, { text: prompt }];
 
-    const model = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    // 화면에서 느릴 때 다른 모델로 재시도할 수 있게 모델명을 받음 (gemini-* 만 허용)
+    const model = /^gemini-[\w.\-]+$/.test(reqModel || '') ? reqModel : (process.env.GEMINI_MODEL || 'gemini-3.8-flash');
     const call = cfg => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       signal: AbortSignal.timeout(55000),
       headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts }], generationConfig: cfg })
     });
-    // 생각(thinking)을 낮춰 응답 속도를 높임. 지원하지 않으면 옵션 없이 재시도
-    let r = await call({ temperature: 0, maxOutputTokens: 16000, thinkingConfig: { thinkingLevel: 'low' } });
-    if (r.status === 400) r = await call({ temperature: 0, maxOutputTokens: 16000 });
+    // JSON으로만 답하게 하고(군더더기 출력 제거), 생각(thinking)을 낮춰 응답 속도를 높임.
+    // 지원하지 않는 옵션이면 400이 오므로 옵션을 줄여 재시도
+    const base = { temperature: 0, maxOutputTokens: 8192, responseMimeType: 'application/json' };
+    let r = await call({ ...base, thinkingConfig: { thinkingLevel: 'low' } });
+    if (r.status === 400) r = await call(base);
+    if (r.status === 400) r = await call({ temperature: 0, maxOutputTokens: 8192 });
     const j = await r.json();
     if (!r.ok) {
       const msg = r.status === 429 ? '무료 사용 한도에 도달했어요. 잠시 후 다시 시도하세요.' : (j.error?.message || 'AI 호출 실패');
       return res.status(r.status === 429 ? 429 : 502).json({ error: msg });
     }
     const out = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
-    const m = out.match(/\[[\s\S]*\]/);
-    const list = m ? JSON.parse(m[0]) : [];
+    const list = parseList(out);
     const transactions = list
       .filter(t => t && t.date && t.merchant && Number.isFinite(Number(t.amount)))
       .map(t => ({ date: t.date, merchant: String(t.merchant).trim(), amount: Math.round(Number(t.amount)), category: t.category }));
@@ -46,3 +49,10 @@ JSON 배열 외의 설명이나 코드블록은 쓰지 마세요.
     res.status(timeout ? 504 : 500).json({ error: timeout ? 'AI 응답이 55초 안에 오지 않았어요. 파일을 나눠서 다시 올려보세요.' : String(e.message || e) });
   }
 };
+
+// 응답이 길어서 중간에 잘렸거나 형식이 깨져도, 끝까지 완성된 거래 항목은 건져서 사용
+function parseList(out) {
+  const m = out.match(/\[[\s\S]*\]/);
+  if (m) { try { return JSON.parse(m[0]); } catch (_) { /* 아래에서 항목 단위로 복구 */ } }
+  return (out.match(/\{[^{}]*\}/g) || []).map(s => { try { return JSON.parse(s); } catch (_) { return null; } }).filter(Boolean);
+}
