@@ -58,7 +58,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   <div>
     <div class="panel">
       <h2>카드내역 올리기</h2>
-      <div id="drop" tabindex="0"><b>이미지·PDF·CSV를 끌어놓거나 눌러서 선택</b><br>캡처가 길어도 자동으로 나눠서 읽어요. 여러 파일 가능.</div>
+      <div id="drop" tabindex="0"><b>이미지·PDF·CSV·엑셀을 끌어놓거나 눌러서 선택</b><br>캡처가 길어도 자동으로 나눠서 읽어요. 여러 파일 가능.</div>
       <input id="file" type="file" multiple class="hide">
       <div id="status"></div>
     </div>
@@ -92,6 +92,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   </aside>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 // ▼ 본인 Supabase 값으로 교체 (anon 키는 공개해도 되는 키입니다)
@@ -155,12 +156,20 @@ async function readText(file) {
   try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
   catch { return new TextDecoder('euc-kr').decode(buf); } // 카드사 CSV는 EUC-KR인 경우가 많음
 }
+const isXls = f => /\.xlsx?$/i.test(f.name);
+function csvChunks(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.replace(/[,\s"]/g, ''));
+  const head = lines[0], out = [];
+  for (let i = 1; i < lines.length; i += 250) out.push({ text: [head, ...lines.slice(i, i + 250)].join('\n') });
+  return out.length ? out : [{ text: lines.join('\n') }];
+}
 async function toChunks(file) {
-  if (isCsv(file)) {
-    const lines = (await readText(file)).split(/\r?\n/).filter(l => l.trim());
-    const head = lines[0], out = [];
-    for (let i = 1; i < lines.length; i += 250) out.push({ text: [head, ...lines.slice(i, i + 250)].join('\n') });
-    return out.length ? out : [{ text: lines.join('\n') }];
+  if (isCsv(file)) return csvChunks(await readText(file));
+  if (isXls(file)) {
+    if (typeof XLSX === 'undefined') throw new Error('엑셀 라이브러리를 불러오지 못했어요. 새로고침 후 다시 시도하세요.');
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const text = wb.SheetNames.map(n => XLSX.utils.sheet_to_csv(wb.Sheets[n])).join('\n');
+    return csvChunks(text);
   }
   if (file.type === 'application/pdf') return [{ media_type: 'application/pdf', data: await b64(file) }];
   const bmp = await createImageBitmap(file);
@@ -188,8 +197,8 @@ async function analyze(chunk) {
 
 async function handle(files) {
   setStatus(`파일 ${files.length}개를 읽는 중…`);
-  files = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || isCsv(f));
-  if (!files.length) return setStatus('이미지, PDF, CSV 파일만 올릴 수 있어요.', true);
+  files = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || isCsv(f) || isXls(f));
+  if (!files.length) return setStatus('이미지, PDF, CSV, 엑셀 파일만 올릴 수 있어요.', true);
   try {
     let chunks = [];
     for (const f of files) chunks.push(...await toChunks(f));
