@@ -372,6 +372,7 @@ td select { border-radius: 8px; background: #faf9f6; }
         <button class="btn sm" id="manualAdd">+ 직접 입력</button>
         <select id="month" class="btn"></select>
         <select id="catFilter" class="btn" aria-label="분류 필터"></select>
+        <input id="mSearch" type="search" lang="ko" class="btn" placeholder="가맹점 검색" aria-label="가맹점 검색" style="min-width:0;width:140px;text-align:left;cursor:text">
         <label class="chk"><input type="checkbox" id="sameMerchant" checked>같은 가맹점의 기존 내역도 함께 변경</label>
         <span class="sp"></span>
         <button class="btn primary" id="save" disabled>저장</button>
@@ -848,7 +849,7 @@ function refresh() {
   draw(); drawDash();
 }
 function draw() {
-  const m = $('month').value, all = txs.filter(t => t.date.startsWith(m)), f = $('catFilter').value, list = f ? all.filter(t => t.category === f) : all;
+  const m = $('month').value, all = txs.filter(t => t.date.startsWith(m)), f = $('catFilter').value, q = $('mSearch').value.trim().toLowerCase().replace(/\s+/g, ''), list = all.filter(t => (!f || t.category === f) && (!q || String(t.merchant || '').toLowerCase().replace(/\s+/g, '').includes(q)));
   $('rows').innerHTML = list.map(t => `<tr class="${t.fresh && !t.saved ? 'new' : ''}">
     <td class="txdate">${esc(t.date.slice(5).replace('-', '/'))}</td><td class="merchant">${esc(t.merchant)}</td>
      <td class="category"><select data-h="${esc(t.hash)}">${(CATS.includes(t.category) ? CATS : [...CATS, t.category]).map(c => `<option${c === t.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
@@ -863,7 +864,7 @@ function draw() {
   $('empty').textContent = txs.length ? '이 조건에 맞는 내역이 없어요.' : '아직 내역이 없어요. 위에서 카드내역을 올려보세요.';
   $('empty').classList.toggle('hide', list.length > 0);
 }
-$('month').onchange = draw; $('catFilter').onchange = draw;
+$('month').onchange = draw; $('catFilter').onchange = draw; $('mSearch').oninput = draw;
 $('rows').onchange = e => {
   const h = e.target.dataset.h; if (!h) return;
   const t = txs.find(x => x.hash === h); t.category = e.target.value; t.saved = false; t.fresh = false;
@@ -900,10 +901,21 @@ function latestMonth() {
 const lns = items => items.map(i => `<div class="ln"><span>${esc(i.n)}</span><b>${mm(i.v)}</b></div>`).join('');
 const sumLn = (label, v) => `<div class="ln sum"><span>${label}</span><b>${mm(v)}</b></div>`;
 
-// 카드값 비고 자동 문구 (전월 카드내역, 5만원 이상 분류)
+// 카드값 비고 자동 문구 (전월 카드내역). 고정 2줄을 먼저, 나머지(5만원 이상, 기타 제외)는 아이폰 화면 폭에 맞춰 줄바꿈
+const MEMO_FIXED = [['관리비', '주유/교통', '점심'], ['백화점/외식', '마트/반찬']];
+const MEMO_W = 44; // 한 줄 폭(한글 2, 숫자·기호 1)
+const memoW = t => [...t].reduce((a, ch) => a + (/[\u1100-\uffff]/.test(ch) ? 2 : 1), 0);
 function cardMemoAuto(m) {
   const c = cardByMonth()[monthAdd(m, -1)];
-  return c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[0] !== '기타' && e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
+  if (!c) return '';
+  const cats = c.cats, item = n => `${n}(${mm(cats[n] / 10000)})`, has = n => cats[n] > 0;
+  const lines = MEMO_FIXED.map(g => g.filter(has)).filter(g => g.length).map(g => '- ' + g.map(item).join(' '));
+  const fixed = new Set(MEMO_FIXED.flat());
+  const rest = Object.keys(cats).filter(n => n !== '기타' && !fixed.has(n) && cats[n] / 10000 >= 5).sort((a, b) => cats[b] - cats[a]).map(item);
+  let cur = '';
+  rest.forEach(t => { const nx = cur ? cur + ' ' + t : '- ' + t; if (cur && memoW(nx) > MEMO_W) { lines.push(cur); cur = '- ' + t; } else cur = nx; });
+  if (cur) lines.push(cur);
+  return '■ 카드값 (5만 이상)\n' + lines.join('\n');
 }
 function dashboardRow(m, card) {
   const L = ledger[m] || {}, c = card[monthAdd(m, -1)], cardMan = c ? c.total / 10000 : 0;
