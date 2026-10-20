@@ -300,25 +300,25 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 :root { --bg: #f4f3ef; --ink: #15171a; --mute: #7b8088; --line: #ebe9e3; --dark: #15171a; }
 html { min-height: 100%; background: radial-gradient(760px 360px at 8% 0, #ebe7fb 0, transparent 70%), radial-gradient(680px 340px at 100% 0, #def2ee 0, transparent 65%), var(--bg); background-repeat: no-repeat; }
 body { background: transparent; }
-.panel, #dash .panel, #history .panel, #dash > .panel, #history > .panel { border-radius: 22px; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(21,23,26,.04), 0 10px 28px rgba(21,23,26,.05); }
-.seg { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 1px 2px rgba(21,23,26,.04); }
-#tabs .tab { border-radius: 999px; color: var(--mute); font-weight: 600; }
+.panel, #dash .panel, #history .panel, #dash > .panel, #history > .panel { border-radius: 12px; border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(21,23,26,.04), 0 10px 28px rgba(21,23,26,.05); }
+.seg { display: flex; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 2px rgba(21,23,26,.04); }
+#tabs .tab { border-radius: 9px; color: var(--mute); font-weight: 600; }
 #tabs .tab.on { background: var(--dark); color: #fff; }
-.btn, #tabs .btn { border-radius: 999px; background: #fff; border-color: var(--line); }
+.btn, #tabs .btn { border-radius: 10px; background: #fff; border-color: var(--line); }
 .btn:hover { border-color: var(--dark); }
 .btn.primary { background: var(--dark); border-color: var(--dark); color: #fff; }
 .pinb.on { background: var(--dark); border-color: var(--dark); }
-.fl input, .fl textarea, .crow input { border-radius: 12px; border-color: var(--line); }
-#drop { border-radius: 18px; border-color: #d8d5cb; background: #faf9f6; }
+.fl input, .fl textarea, .crow input { border-radius: 8px; border-color: var(--line); }
+#drop { border-radius: 12px; border-color: #d8d5cb; background: #faf9f6; }
 #drop.over { border-color: var(--dark); background: #fff; }
-.sheet { border-radius: 24px; box-shadow: 0 24px 60px rgba(21,23,26,.25); }
+.sheet { border-radius: 14px; box-shadow: 0 24px 60px rgba(21,23,26,.25); }
 .modal { background: rgba(21,23,26,.35); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 .cat i, .pbar i { background: linear-gradient(90deg, #5ab9aa, #47a3de); }
 .track i { background: linear-gradient(90deg, #f5b95e, #ee8450); }
 .track { background: #f7f0e6; }
 .pbar { background: #e4f1f3; }
-textarea { background: #faf9f6; border-radius: 14px; }
-td select { border-radius: 999px; background: #faf9f6; }
+textarea { background: #faf9f6; border-radius: 10px; }
+td select { border-radius: 8px; background: #faf9f6; }
 :focus-visible { outline-color: var(--dark); }
 /* 거래 내역 툴바: 버튼·월 선택 높이 통일 */
 #app .bar .btn, #app .bar select.btn { height: 34px; padding: 0 14px; font-size: 14px; line-height: 1; margin: 0; }
@@ -399,7 +399,7 @@ td select { border-radius: 999px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v2.9';
+const APP_VERSION = 'v3.0';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
