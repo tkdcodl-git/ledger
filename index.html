@@ -70,7 +70,9 @@ th{text-align:center!important}
 .track{flex:1;height:12px;background:var(--accent-soft);border-radius:6px;overflow:hidden}.track i{display:block;height:100%;background:var(--accent);border-radius:6px}
 .modal{position:fixed;inset:0;background:rgba(22,33,29,.4);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
 .sheet{background:var(--card);border-radius:12px;padding:20px;width:min(480px,100%);max-height:90vh;overflow:auto}
-.crow{display:flex;gap:8px;margin:6px 0}
+.crow{display:flex;gap:8px;margin:6px 0;align-items:center}
+input,textarea{ime-mode:active}
+.pinb{margin:0;white-space:nowrap}.pinb.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .crow input,.fl input,.fl textarea{flex:1;border:1px solid var(--line);border-radius:8px;padding:8px;min-width:0;width:100%}
 .crow input[readonly]{background:#f2f5f4}
 .fl{display:block;margin:12px 0;font-weight:600;font-size:14px}.fl input,.fl textarea{margin-top:4px;font-weight:400}
@@ -147,7 +149,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.3';
+const APP_VERSION = 'v1.4';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -176,6 +178,9 @@ async function loadAll() {
     const c = (st.data || []).find(x => x.key === 'categories');
     if (c && Array.isArray(c.value) && c.value.length) CATS = c.value;
     ledger = {}; (lg.data || []).forEach(x => ledger[x.month] = x.data);
+    const f = (st.data || []).find(x => x.key === 'fixed'), mt = (st.data || []).find(x => x.key === 'memoTemplate');
+    if (f && f.value) fixed = { income: f.value.income || [], expense: f.value.expense || [] };
+    memoTpl = mt && mt.value ? (mt.value.text || '') : '';
   }
   if (t.error) return setStatus('불러오기 실패: ' + t.error.message, true);
   txs = t.data.map(x => ({ hash: x.hash, date: x.tx_date, merchant: x.merchant, amount: x.amount, category: x.category, saved: true }));
@@ -357,7 +362,7 @@ $('copy').onclick = async () => { await navigator.clipboard.writeText($('memo').
 window.addEventListener('beforeunload', e => { if (txs.some(t => !t.saved)) { e.preventDefault(); e.returnValue = ''; } });
 
 // ---------- 대시보드 · 설정 ----------
-let ledger = {}, catRows = [], led = null, dashCatMonth = '';
+let ledger = {}, catRows = [], led = null, dashCatMonth = '', fixed = { income: [], expense: [] }, memoTpl = '', downOnBackdrop = false;
 const num = v => { const x = parseFloat(String(v).replace(/,/g, '')); return isFinite(x) ? x : 0; };
 const mm = n => (Math.round(n * 10) / 10).toLocaleString('ko-KR');
 const monthAdd = (m, d) => { let [y, o] = m.split('-').map(Number); o += d; y += Math.floor((o - 1) / 12); o = ((o - 1) % 12 + 12) % 12 + 1; return y + '-' + String(o).padStart(2, '0'); };
@@ -425,8 +430,8 @@ const closeModal = () => $('modal').classList.add('hide');
 function openCats() { catRows = CATS.map(c => ({ orig: c, name: c })); renderCats(); }
 function renderCats(msg) {
   openModal(`<h2>분류 설정</h2>
-    <div>${catRows.map((r, i) => `<div class="crow"><input data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
-    <div class="crow"><input id="newCat" placeholder="새 분류 이름"><button class="btn" id="addCat">추가</button></div>
+    <div>${catRows.map((r, i) => `<div class="crow"><input lang="ko" data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
+    <div class="crow"><input lang="ko" id="newCat" placeholder="새 분류 이름"><button class="btn" id="addCat">추가</button></div>
     <p class="muted">이름을 바꾸면 기존 거래도 함께 바뀌고, 삭제한 분류의 거래는 '기타'로 옮겨져요.</p>
     <p id="catMsg" class="${msg ? '' : 'hide'}" style="color:var(--warn)">${esc(msg || '')}</p>
     <div class="bar"><span class="sp"></span><button class="btn" data-close>닫기</button><button class="btn primary" id="catSave">저장</button></div>`);
@@ -451,26 +456,42 @@ async function saveCats() {
 
 // ----- 월 정보 입력 -----
 function openLedger(m) {
-  const L = ledger[m] || {};
-  led = { m, balance: L.balance != null ? String(L.balance) : '', income: (L.income || []).map(x => ({ n: x.n, v: String(x.v) })), expense: (L.expense || []).map(x => ({ n: x.n, v: String(x.v) })), note: L.note || '' };
+  const L = ledger[m], isNew = !L, pinned = (k, n) => fixed[k].some(f => f.n === n);
+  const src = k => isNew ? fixed[k].map(f => ({ n: f.n, v: String(f.v), pin: true })) : (L[k] || []).map(x => ({ n: x.n, v: String(x.v), pin: pinned(k, x.n) }));
+  led = { m, balance: !isNew && L.balance != null ? String(L.balance) : '', income: src('income'), expense: src('expense'), note: isNew ? memoTpl : (L.note || '') };
   renderLedger();
 }
-function renderLedger(msg) {
-  const rows = (k, list) => list.map((r, i) => `<div class="crow"><input data-f="${k}N" data-i="${i}" list="${k}Names" value="${esc(r.n)}" placeholder="항목"><input data-f="${k}V" data-i="${i}" value="${esc(r.v)}" inputmode="decimal" placeholder="만원" style="max-width:100px;text-align:right"><button class="x" data-ldel="${k}:${i}" aria-label="삭제">×</button></div>`).join('');
+function renderLedger(msg, ok) {
+  const rows = (k, list) => list.map((r, i) => `<div class="crow"><input lang="ko" data-f="${k}N" data-i="${i}" list="${k}Names" value="${esc(r.n)}" placeholder="항목"><input data-f="${k}V" data-i="${i}" value="${esc(r.v)}" inputmode="decimal" placeholder="만원" style="max-width:90px;text-align:right"><button class="btn sm pinb ${r.pin ? 'on' : ''}" data-lpin="${k}:${i}" aria-pressed="${!!r.pin}" title="매월 고정 항목으로 저장/해제">고정</button><button class="x" data-ldel="${k}:${i}" aria-label="삭제">×</button></div>`).join('');
   openModal(`<h2>${led.m.replace('-', '년 ')}월 정보 입력 <span class="muted">(단위: 만원)</span></h2>
     <label class="fl">잔액<input data-f="balance" value="${esc(led.balance)}" inputmode="decimal" placeholder="예: 168.9"></label>
     <div class="fl">수입 항목${rows('in', led.income)}<button class="btn sm" data-ladd="in">+ 수입 항목</button></div>
     <div class="fl">지출 항목 <span class="muted">(카드값은 자동 계산)</span>${rows('ex', led.expense)}<button class="btn sm" data-ladd="ex">+ 지출 항목</button></div>
-    <label class="fl">메모<textarea data-f="note" style="min-height:70px">${esc(led.note)}</textarea></label>
-    <p class="${msg ? '' : 'hide'}" style="color:var(--warn)">${esc(msg || '')}</p>
+    <p class="muted" style="margin:0">'고정'을 켠 항목은 저장할 때 매월 고정 항목이 되어, 새 달을 열면 자동으로 채워져요.</p>
+    <div class="fl">메모<textarea lang="ko" data-f="note" style="min-height:90px">${esc(led.note)}</textarea>
+      <div class="bar" style="margin:6px 0 0"><button class="btn sm" data-memo="load">양식 불러오기</button><button class="btn sm" data-memo="save">지금 메모를 양식으로 저장</button></div></div>
+    <p class="${msg ? '' : 'hide'}" style="color:var(${ok ? '--accent' : '--warn'})">${esc(msg || '')}</p>
     <div class="bar"><span class="sp"></span><button class="btn" data-close>닫기</button><button class="btn primary" id="ledSave">저장</button></div>`);
 }
 async function saveLedger() {
   const clean = l => l.filter(r => r.n.trim() || r.v.trim()).map(r => ({ n: r.n.trim() || '기타', v: num(r.v) }));
   const data = { balance: led.balance.trim() === '' ? null : num(led.balance), income: clean(led.income), expense: clean(led.expense), note: led.note.trim() };
-  const e = (await sb.from('ledger').upsert({ month: led.m, data }, { onConflict: 'month' })).error;
+  // 고정 항목: 켠 항목은 이름·금액 갱신, 끈 항목은 제거 (이 달에 없는 항목은 그대로 둠)
+  const nf = { income: fixed.income.slice(), expense: fixed.expense.slice() };
+  [['income', led.income], ['expense', led.expense]].forEach(([k, list]) => list.filter(r => r.n.trim() || r.v.trim()).forEach(r => {
+    const n = r.n.trim() || '기타', i = nf[k].findIndex(f => f.n === n);
+    if (r.pin) { if (i >= 0) nf[k][i].v = num(r.v); else nf[k].push({ n, v: num(r.v) }); } else if (i >= 0) nf[k].splice(i, 1);
+  }));
+  const e = (await sb.from('ledger').upsert({ month: led.m, data }, { onConflict: 'month' })).error
+        || (await sb.from('settings').upsert({ key: 'fixed', value: nf }, { onConflict: 'key' })).error;
   if (e) return renderLedger('저장 실패: ' + e.message);
-  ledger[led.m] = data; closeModal(); drawDash(); setStatus(`${led.m} 정보를 저장했어요.`);
+  ledger[led.m] = data; fixed = nf; closeModal(); drawDash(); setStatus(`${led.m} 정보를 저장했어요.`);
+}
+async function memoTemplate(kind) {
+  if (kind === 'load') { led.note = memoTpl; return renderLedger(memoTpl ? '양식을 불러왔어요.' : '저장된 양식이 없어요.', !!memoTpl); }
+  const e = (await sb.from('settings').upsert({ key: 'memoTemplate', value: { text: led.note } }, { onConflict: 'key' })).error;
+  if (e) return renderLedger('저장 실패: ' + e.message);
+  memoTpl = led.note; renderLedger('메모 양식을 저장했어요. 새 달을 열면 이 양식이 채워져요.', true);
 }
 
 // ----- 이벤트 -----
@@ -482,14 +503,19 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
 $('catBtn').onclick = openCats;
 $('catMonth').onchange = e => { dashCatMonth = e.target.value; drawDash(); };
 $('dashRows').onclick = e => { const m = e.target.dataset.m; if (m) openLedger(m); };
+$('modal').onmousedown = e => { downOnBackdrop = e.target === $('modal'); };
 $('modal').onclick = e => {
   const d = e.target.dataset;
-  if (e.target === $('modal') || 'close' in d) return closeModal();
+  // 입력칸에서 드래그하다 바깥에서 놓아도 닫히지 않게: 눌렀을 때도 배경이었을 때만 닫음
+  if ((e.target === $('modal') && downOnBackdrop) || 'close' in d) return closeModal();
+  if (e.target === $('modal')) return;
   if (e.target.id === 'addCat') { const v = $('newCat').value.trim(); if (!v) return; if (catRows.some(r => r.name === v)) return renderCats('이미 있는 분류예요.'); catRows.push({ orig: null, name: v }); return renderCats(); }
   if (d.cdel) { catRows.splice(+d.cdel, 1); return renderCats(); }
   if (e.target.id === 'catSave') return saveCats();
   if (d.ladd) { led[d.ladd === 'in' ? 'income' : 'expense'].push({ n: '', v: '' }); return renderLedger(); }
   if (d.ldel) { const [k, i] = d.ldel.split(':'); led[k === 'in' ? 'income' : 'expense'].splice(+i, 1); return renderLedger(); }
+  if (d.lpin) { const [k, i] = d.lpin.split(':'), r = led[k === 'in' ? 'income' : 'expense'][+i]; r.pin = !r.pin; return renderLedger(); }
+  if (d.memo) return memoTemplate(d.memo);
   if (e.target.id === 'ledSave') return saveLedger();
 };
 $('modal').oninput = e => {
