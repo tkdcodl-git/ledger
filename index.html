@@ -394,7 +394,7 @@ td select { border-radius: 8px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v3.7';
+const APP_VERSION = 'v3.8';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -561,32 +561,100 @@ function localParseRows(rows) {
 }
 // 키워드 → 분류 (앞쪽이 우선). 내 분류에 없는 이름이면 '기타'. 직접 바꾼 규칙/과거 내역이 항상 먼저 적용돼요.
 const KEYWORDS = [
-  ['통신/구독', /넷플릭스|유튜브|멜론|스포티파이|와우|구독|스카이라이프|통신|SKT|KT|LGU|U\+|티빙|웨이브|디즈니/i],
-  ['관리비/공과금', /관리비|한국전력|한전|도시가스|가스공사|수도|지방세|국세|세금|공과금|아파트/],
+  ['통신/구독', /넷플릭스|유튜브|멜론|스포티파이|와우|구독|스카이라이프|통신|SKT|KT(?!X)|LG ?U\+|티빙|웨이브|디즈니/i],
+  ['관리비/공과금', /관리비|한국전력|한전|도시가스|가스공사|수도|지방세|국세|세금|공과금|아파트|북한산시|\d동\d{3,4}호/],
   ['병원/약국', /병원|의원|약국|치과|한의원|클리닉|내과|소아과|안과|피부과|이비인후과|정형외과/],
-  ['주유/교통', /주유|칼텍스|SK에너지|에쓰오일|S-?OIL|현대오일|오일뱅크|코레일|KTX|SRT|택시|버스|지하철|티머니|하이패스|주차|도로공사|카카오T|충전/i],
+  ['주유/교통', /주유|에너지|칼텍스|에쓰오일|S-?OIL|현대오일|오일뱅크|코레일|KTX|SRT|택시|버스|지하철|티머니|하이패스|주차|도로공사|카카오T|충전/i],
   ['여행/숙소', /호텔|리조트|펜션|숙박|에어비앤비|항공|야놀자|여기어때|아고다|트립|모텔|캠핑/],
   ['교육/육아', /어린이집|유치원|학원|교육|서점|교보문고|키즈|영어|학습/],
   ['경조사/선물', /화환|꽃|상품권|축의|부의|기프트/],
-  ['카페/간식', /카페|커피|스타벅스|베이커리|빵|파리바게|뚜레쥬르|아이스크림|디저트|투썸|이디야|메가MGC|메가커피|컴포즈|빽다방|도넛|떡/i],
-  ['백화점/외식', /백화점|식당|치킨|피자|맥도날드|버거|김밥|국밥|고기|횟집|쌈밥|샤브|분식|반점|곱창|갈비|냉면|초밥|뷔페|술집|포차|롯데리아|서브웨이/],
-  ['마트/반찬', /마트|슈퍼|한살림|반찬|편의점|GS25|지에스25|CU|씨유|세븐일레븐|이마트|홈플러스|하나로|농협|정육|과일|야채|코스트코/i],
-  ['쇼핑', /네이버페이|쿠팡|11번가|G마켓|옥션|올리브영|다이소|유니클로|무신사|아울렛|쇼핑|몰$|스토어/i]
+  ['카페/간식', /카페|커피|스타벅스|베이커리|빵|파리바게|뚜레쥬르|아이스크림|디저트|투썸|이디야|메가MGC|메가커피|컴포즈|빽다방|도넛|떡|과자|와플|뻥튀기|타코야끼|베이커/i],
+  ['백화점/외식', /백화점|식당|치킨|피자|맥도날드|버거|김밥|국밥|고기|횟집|쌈밥|샤브|분식|반점|곱창|갈비|냉면|초밥|뷔페|술집|포차|롯데리아|서브웨이|맘스터치|다운타우너|청와옥|쿠우쿠우|칼국수|쭈꾸미|낙지|닭갈비|막국수|중화원/],
+  ['마트/반찬', /마트|슈퍼|한살림|반찬|편의점|GS25|지에스25|CU|씨유|세븐일레븐|이마트|홈플러스|하나로|농협|정육|축산|과일|야채|코스트코|더프레시|농팜|식자재/i],
+  ['쇼핑', /네이버페이|쿠팡|11번가|G마켓|옥션|올리브영|다이소|유니클로|무신사|아울렛|쇼핑|몰$|스토어|무인양품|MUJI/i]
 ];
 function guessCategory(m) {
   for (const [cat, re] of KEYWORDS) if (re.test(m) && CATS.includes(cat)) return cat;
   return '기타';
 }
+// ---------- 카드사 명세서 양식 (현대형 · 신한형 · 결제원금 열이 있는 명세서) ----------
+// 금액은 '이번 청구 금액(결제원금/이번달 납부금액 원금)'을 써서 명세서 합계와 맞춤.
+// 이용일이 아닌 지난 달 할부 회차(2회차 이상)는 이번 명세서의 마지막 날짜로 넣어 달 합계가 겹치지 않게 함.
+function stmtDate(v) {
+  const s = String(v == null ? '' : v).trim();
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/); // 신한형: 9/22/26 (월/일/연)
+  if (m) { const mo = +m[1], d = +m[2]; return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? `${2000 + +m[3]}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null; }
+  return parseDateStr(s);
+}
+// 현대형: "한살림매장47,830"처럼 이용금액이 가맹점 칸 끝에 붙어 있음 → 금액 부분을 떼어냄
+function unglue(s, billed) {
+  const m = s.match(/[\d,]+$/); if (!m) return s;
+  const run = m[0], cands = [];
+  for (let i = 0; i < run.length; i++) { const suf = run.slice(i); if (/^\d{1,3}(,\d{3})*$/.test(suf)) cands.push({ v: +suf.replace(/,/g, ''), len: suf.length }); }
+  if (!cands.length) return s;
+  const b = Math.abs(billed);
+  const pick = cands.find(c => c.v === b) || cands.filter(c => c.v >= b).sort((x, y) => x.v - y.v)[0] || cands[cands.length - 1];
+  return s.slice(0, s.length - pick.len).replace(/[\s\-]+$/, '').trim();
+}
+function stmtParse(rows) {
+  const norm = c => String(c == null ? '' : c).replace(/\s+/g, '');
+  let H = null;
+  for (let r = 0; r < Math.min(rows.length, 60) && !H; r++) {
+    const c = (rows[r] || []).map(norm);
+    const di = c.findIndex(x => /^(이용일|거래일자?)$/.test(x)), mi = c.findIndex(x => /가맹점/.test(x));
+    let pi = c.findIndex(x => /^결제원금$/.test(x)); if (pi < 0) pi = c.findIndex(x => /^이번달납부금액$/.test(x));
+    if (di >= 0 && mi >= 0 && pi >= 0) H = { r, c, di, mi, pi };
+  }
+  if (!H) return null;
+  const data = rows.slice(H.r + 1), dated = data.filter(r => r && stmtDate(r[H.di]));
+  const sample = dated.slice(0, 8);
+  const merged = sample.length > 0 && sample.every(r => /\d$/.test(String(r[H.mi]).trim()) && !/^-?[\d,.]+$/.test(String(r[H.mi + 1] == null ? '' : r[H.mi + 1]).trim()));
+  const sh = merged ? 1 : 0, P = H.pi - sh;
+  const feeH = H.c.findIndex((x, i) => i > H.pi && /^수수료/.test(x)), F = feeH >= 0 ? feeH - sh : P + 1;
+  const comb = H.c.findIndex(x => /^할부\/회차$/.test(x)), mI = H.c.findIndex(x => /^할부기간$/.test(x)), nI = H.c.findIndex(x => /^(청구)?회차$/.test(x));
+  const out = []; let fee = 0;
+  for (const row of data) {
+    if (!row) continue;
+    let date = stmtDate(row[H.di]);
+    if (!date && norm(row[H.di])) continue;             // '합계' 같은 구분 행
+    const billed = parseAmountStr(row[P]); if (!billed) continue;
+    let merchant = String(row[H.mi] == null ? '' : row[H.mi]).trim();
+    if (!date && (!merchant || /합계|소계|총/.test(merchant))) continue;
+    if (merged) merchant = unglue(merchant, billed);
+    if (/^분할납부\(/.test(merchant)) { merchant = merchant.replace(/^분할납부\(/, ''); if (merchant.endsWith(')') && (merchant.match(/\)/g) || []).length > (merchant.match(/\(/g) || []).length) merchant = merchant.slice(0, -1); }
+    merchant = merchant.replace(/\s+/g, ' ').trim();
+    if (!merchant) continue;
+    let months = 0, nth = 0;
+    if (comb >= 0) { const m = String(row[comb - sh] || '').match(/^(\d+)\/(\d+)/); if (m) { months = +m[1]; nth = +m[2]; } }
+    else { months = parseInt(row[mI]) || 0; nth = parseInt(row[nI]) || 0; }
+    fee += Math.max(0, parseAmountStr(row[F]) || 0);
+    out.push({ date, merchant, amount: billed, months, nth });
+  }
+  if (!out.length) return null;
+  // 이번 명세서의 사용월 = 할부 2회차 이상을 뺀 거래 중 가장 많은 달
+  const cnt = {}; out.filter(t => t.date && t.nth <= 1).forEach(t => { const m = t.date.slice(0, 7); cnt[m] = (cnt[m] || 0) + 1; });
+  const mon = (Object.entries(cnt).sort((a, b) => b[1] - a[1])[0] || [out.map(t => t.date).filter(Boolean).sort().pop().slice(0, 7)])[0];
+  const [y, mo] = mon.split('-').map(Number), end = `${mon}-${String(new Date(y, mo, 0).getDate()).padStart(2, '0')}`;
+  out.forEach(t => { if (!t.date || t.nth > 1) t.date = end; if (t.months > 1 && t.nth > 0) t.merchant += ` (할부 ${t.nth}/${t.months})`; delete t.months; delete t.nth; });
+  if (fee > 0) out.push({ date: end, merchant: '카드 할부 수수료(이자)', amount: fee });
+  out.fmt = merged ? '현대카드형' : /^이번달납부금액$/.test(H.c[H.pi]) ? '신한카드형' : '명세서형';
+  return out;
+}
 async function localRowsOf(file) {
   try {
-    if (isCsv(file)) return localParseRows(csvRows(await readText(file)));
-    if (isXls(file) && typeof XLSX !== 'undefined') {
+    let sheets = null;
+    if (isCsv(file)) sheets = [csvRows(await readText(file))];
+    else if (isXls(file) && typeof XLSX !== 'undefined') {
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-      const all = [];
-      for (const n of wb.SheetNames) { const r = localParseRows(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '', dateNF: 'yyyy-mm-dd' })); if (r) all.push(...r); }
-      return all.length ? all : null;
+      sheets = wb.SheetNames.map(n => XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '', dateNF: 'yyyy-mm-dd' }));
     }
-  } catch (_) { /* 실패하면 AI로 읽음 */ }
+    if (!sheets) return null;
+    const st = sheets.map(stmtParse).filter(Boolean);  // 카드사 명세서 양식이면 그 시트만 사용
+    if (st.length) { const all = st.flat(); all.fmt = st[0].fmt; return all; }
+    const all = [];
+    for (const rows of sheets) { const r = localParseRows(rows); if (r) all.push(...r); }
+    return all.length ? all : null;
+  } catch (_) { /* 실패하면 '읽지 못함' 안내 */ }
   return null;
 }
 async function toChunks(file) {
@@ -705,9 +773,9 @@ async function handle(files) {
   if (!files.length) return setStatus('이미지, PDF, CSV, 엑셀 파일만 올릴 수 있어요.', true);
   try {
     // 엑셀/CSV는 먼저 AI 없이 직접 읽음 (열을 못 찾으면 AI로)
-    const localRows = [], aiFiles = [], unreadable = [];
+    const localRows = [], aiFiles = [], unreadable = [], notes = [];
     for (const f of files) {
-      if (isCsv(f) || isXls(f)) { const r = await localRowsOf(f); if (r) localRows.push(...r); else unreadable.push(f.name); }
+      if (isCsv(f) || isXls(f)) { const r = await localRowsOf(f); if (r) { localRows.push(...r); notes.push(`${f.name} → ${r.fmt || '표 형식'} ${r.length}건 ${won(r.reduce((a, t) => a + t.amount, 0))}원`); } else unreadable.push(f.name); }
       else aiFiles.push(f);
     }
     let chunks = [];
@@ -753,7 +821,7 @@ async function handle(files) {
     refresh();
     const skipped = chunks.length - aiDone;
     const reason = fails.length ? fails[0] : '';
-    const used = `(AI 요청 ${aiCalls}회 사용)`, cNote = unreadable.length ? ` 읽지 못한 엑셀/CSV: ${unreadable.join(', ')} — 이용일·가맹점·금액 열을 찾지 못했어요(엑셀/CSV는 AI를 쓰지 않아요).` : '';
+    const used = `(AI 요청 ${aiCalls}회 사용)`, cNote = (notes.length ? ' [' + notes.join(' / ') + ']' : '') + (unreadable.length ? ` 읽지 못한 엑셀/CSV: ${unreadable.join(', ')} — 이용일·가맹점·금액 열을 찾지 못했어요(엑셀/CSV는 AI를 쓰지 않아요).` : '');
     if (aborted || fails.length) setStatus(`${aborted ? aborted + ' ' : ''}${fails.length ? fails.length + '개 구간 실패' + (reason ? ': ' + reason : '') + '. ' : ''}${skipped > 0 ? '시도하지 못한 구간 ' + skipped + '개. ' : ''}읽은 ${readN}건 중 ${added}건을 추가했어요.${cNote} ${used}`, true);
     else setStatus(`${readN}건을 읽었고 ${added}건을 새로 추가했어요. 분류를 확인하고 저장하세요.${cNote} ${used}`, unreadable.length > 0);
   } catch (e) { clearInterval(prog.timer); $('prog').classList.add('hide'); setStatus(e.message, true); }
