@@ -3,8 +3,8 @@
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
   try {
-    const { media_type, data, text, categories, model: reqModel } = req.body || {};
-    if (!data && !text) return res.status(400).json({ error: '파일 데이터가 없습니다' });
+    const { media_type, data, text, categories, classify, model: reqModel } = req.body || {};
+    if (!data && !text && !(Array.isArray(classify) && classify.length)) return res.status(400).json({ error: '파일 데이터가 없습니다' });
     if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY 환경변수가 없습니다' });
 
     const prompt = `이 카드 이용내역에서 모든 거래를 추출해 JSON 배열로만 답하세요.
@@ -15,7 +15,14 @@ JSON 배열 외의 설명이나 코드블록은 쓰지 마세요.
 - CSV는 열 이름을 보고 이용일·가맹점·이용금액 열을 판단하세요.
 - category는 반드시 다음 중 하나: ${(categories || []).join(', ')}`;
 
-    const parts = text
+    const cprompt = `다음 가맹점명 각각의 분류를 정해 JSON 객체로만 답하세요. 키는 가맹점명 원문 그대로, 값은 분류입니다.
+JSON 외의 설명이나 코드블록은 쓰지 마세요.
+- 분류는 반드시 다음 중 하나: ${(categories || []).join(', ')}
+- 판단이 어려우면 '기타'
+
+[가맹점명]
+${(Array.isArray(classify) ? classify : []).slice(0, 150).map(String).join('\n')}`;
+    const parts = Array.isArray(classify) && classify.length ? [{ text: cprompt }] : text
       ? [{ text: prompt + '\n\n[내역 데이터]\n' + text }]
       : [{ inline_data: { mime_type: media_type, data } }, { text: prompt }];
 
@@ -44,16 +51,28 @@ JSON 배열 외의 설명이나 코드블록은 쓰지 마세요.
       await sleep(1500 * (i + 1));
       r = await callModel(model);
     }
-    if (busy(r.status) && fallback && fallback !== model && deadline - Date.now() > 8000) {
+    if ((busy(r.status) || r.status === 429) && fallback && fallback !== model && deadline - Date.now() > 8000) { // 모델마다 한도가 따로라 대체 모델은 통과할 수 있음
       const r2 = await callModel(fallback);
       if (r2.ok) r = r2;
     }
     const j = await r.json();
     if (!r.ok) {
-      const msg = r.status === 429 ? '무료 사용 한도에 도달했어요. 잠시 후 다시 시도하세요.' : (j.error?.message || 'AI 호출 실패');
+      const raw = String(j.error?.message || ''), det = JSON.stringify(j.error?.details || []);
+      let msg;
+      if (r.status === 429) {
+        const why = /limit: ?0\b/.test(raw) ? ' [한도가 0] 이 모델은 현재 키/프로젝트에서 무료 한도가 없어요. 다른 모델로 바꾸거나 결제를 연결하세요.'
+          : /PerDay/i.test(det + raw) ? ' [일일 한도] 오늘 한도를 다 썼어요. 내일 다시 시도하거나 결제를 연결하세요.'
+          : ' 잠시 후 다시 시도하세요.';
+        msg = '무료 사용 한도에 도달했어요(429).' + why + (raw ? ' (' + raw.replace(/\s+/g, ' ').slice(0, 220) + ')' : '');
+      } else msg = raw || 'AI 호출 실패';
       return res.status(r.status === 429 ? 429 : busy(r.status) ? 503 : 502).json({ error: msg });
     }
     const out = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+    if (Array.isArray(classify) && classify.length) {
+      let map = {}; const mm = out.match(/\{[\s\S]*\}/);
+      try { map = JSON.parse(mm ? mm[0] : '{}'); } catch (_) { map = {}; }
+      return res.status(200).json({ map });
+    }
     const list = parseList(out);
     const transactions = list
       .filter(t => t && t.date && t.merchant && Number.isFinite(Number(t.amount)))

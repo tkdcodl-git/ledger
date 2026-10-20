@@ -356,7 +356,7 @@ td select { border-radius: 8px; background: #faf9f6; }
       <h2>카드내역 올리기</h2>
       <div id="drop" tabindex="0"><b>이미지·PDF·CSV·엑셀을 끌어놓거나 눌러서 선택</b><br>캡처가 길어도 자동으로 나눠서 읽어요. 여러 파일 가능.</div>
       <input id="file" type="file" multiple class="hide">
-      <div id="prog" class="hide"><div class="pbar"><i id="pfill"></i></div><div id="ptxt"><span id="pmsg"></span><span id="ppct"></span></div></div>
+      <div id="prog" class="hide"><div class="pbar"><i id="pfill"></i></div><div id="ptxt"><span id="pmsg"></span><span id="ppct"></span></div><div class="bar" style="margin:8px 0 0"><button class="btn sm" id="upCancel">중단</button></div></div>
       <div id="status"></div>
     </div>
     <div class="panel">
@@ -394,7 +394,7 @@ td select { border-radius: 8px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v3.3';
+const APP_VERSION = 'v3.6';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -453,6 +453,7 @@ async function save() {
   setStatus('저장했어요.'); refresh();
 }
 $('save').onclick = save;
+$('upCancel').onclick = () => { upCancel = true; $('upCancel').disabled = true; setStatus('중단하는 중… 진행 중인 요청이 끝나면 멈춰요.'); };
 
 // ---------- 업로드 ----------
 const drop = $('drop');
@@ -475,8 +476,80 @@ const isXls = f => /\.xlsx?$/i.test(f.name);
 function csvChunks(text) {
   const lines = text.split(/\r?\n/).filter(l => l.replace(/[,\s"]/g, ''));
   const head = lines[0], out = [];
-  for (let i = 1; i < lines.length; i += 80) out.push({ text: [head, ...lines.slice(i, i + 80)].join('\n') }); // 구간이 작을수록 서버 제한시간 안에 끝나요
+  for (let i = 1; i < lines.length; i += 150) out.push({ text: [head, ...lines.slice(i, i + 150)].join('\n') }); // 구간이 작을수록 서버 제한시간 안에 끝나요
   return out.length ? out : [{ text: lines.join('\n') }];
+}
+// ---------- 엑셀/CSV 로컬 파싱 (AI 호출 없이) ----------
+function csvRows(text) {
+  const first = text.split(/\r?\n/).slice(0, 6).join('\n');
+  const delim = (first.match(/\t/g) || []).length > (first.match(/,/g) || []).length ? '\t' : ',';
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cell); cell = ''; }
+    else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if (ch !== '\r') cell += ch;
+  }
+  row.push(cell); rows.push(row);
+  return rows;
+}
+function parseDateStr(v) {
+  const s = String(v == null ? '' : v).trim();
+  let m = s.match(/(\d{4})\D{0,2}(\d{1,2})\D{0,2}(\d{1,2})/), y, mo, d;
+  if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+  else if ((m = s.match(/^(\d{2})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/))) { y = 2000 + +m[1]; mo = +m[2]; d = +m[3]; }
+  else return null;
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 2000 || y > 2100) return null;
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+function parseAmountStr(v) {
+  const raw = String(v == null ? '' : v).trim();
+  if (!raw) return null;
+  const neg = /^\(.*\)$/.test(raw) || /^[-−▲△]/.test(raw);
+  const n = parseFloat(raw.replace(/[,\s원₩()\-−▲△]/g, ''));
+  return isFinite(n) ? Math.round(neg ? -n : n) : null;
+}
+// rows(2차원 배열) → [{date, merchant, amount}] 또는 null(열을 못 찾았거나 읽기 불안정 → AI로)
+function localParseRows(rows) {
+  const norm = c => String(c == null ? '' : c).replace(/\s+/g, '');
+  const dateRe = /이용일|거래일|승인일|결제일|매출일|일자|날짜|일시/, merchRe1 = /가맹점|이용처|이용하신곳|상호|거래처/, merchRe2 = /이용내역|내용|적요/;
+  const bad = /수수료|잔액|포인트|적립|한도|할부개월|누적/;
+  const amtRes = [/이용금액|승인금액|거래금액|결제금액/, /청구금액/, /금액/];
+  let hi = -1, di = -1, mi = -1, ai = -1, ci = -1;
+  for (let r = 0; r < Math.min(rows.length, 40) && hi < 0; r++) {
+    const cells = (rows[r] || []).map(norm);
+    const d = cells.findIndex(c => dateRe.test(c));
+    let m = cells.findIndex(c => merchRe1.test(c)); if (m < 0) m = cells.findIndex(c => merchRe2.test(c));
+    let a = -1; for (const re of amtRes) { a = cells.findIndex(c => re.test(c) && !bad.test(c)); if (a >= 0) break; }
+    if (d >= 0 && m >= 0 && a >= 0 && d !== m && m !== a) { hi = r; di = d; mi = m; ai = a; ci = cells.findIndex((c, i) => /취소|상태|구분/.test(c) && i !== di && i !== mi && i !== ai); }
+  }
+  if (hi < 0) return null;
+  const out = []; let badN = 0;
+  for (const row of rows.slice(hi + 1)) {
+    if (!row || !row.some(c => norm(c))) continue;
+    const merchant = String(row[mi] == null ? '' : row[mi]).trim();
+    if (/합계|소계|총계|^계$|합\s*계/.test(merchant) || /합계|소계|총계/.test(norm(row[di]))) continue;
+    const date = parseDateStr(row[di]); let amount = parseAmountStr(row[ai]);
+    if (!date && !norm(row[di]) && amount == null) continue;
+    if (!date || !merchant || amount == null) { badN++; continue; }
+    if (ci >= 0 && /취소/.test(norm(row[ci])) && !/미취소|취소불가/.test(norm(row[ci])) && amount > 0) amount = -amount;
+    out.push({ date, merchant, amount });
+  }
+  return out.length && out.length / (out.length + badN) >= 0.9 ? out : null;
+}
+async function localRowsOf(file) {
+  try {
+    if (isCsv(file)) return localParseRows(csvRows(await readText(file)));
+    if (isXls(file) && typeof XLSX !== 'undefined') {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+      const all = [];
+      for (const n of wb.SheetNames) { const r = localParseRows(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '', dateNF: 'yyyy-mm-dd' })); if (r) all.push(...r); }
+      return all.length ? all : null;
+    }
+  } catch (_) { /* 실패하면 AI로 읽음 */ }
+  return null;
 }
 async function toChunks(file) {
   if (isCsv(file)) return csvChunks(await readText(file));
@@ -489,7 +562,7 @@ async function toChunks(file) {
   if (file.type === 'application/pdf') return [{ media_type: 'application/pdf', data: await b64(file) }];
   const bmp = await createImageBitmap(file);
   const s = Math.min(1, 1100 / bmp.width), W = Math.round(bmp.width * s), H = Math.round(bmp.height * s);
-  const step = 1200, out = [];
+  const step = 1500, out = [];
   for (let y = 0; y < H; y += step) {
     const h = Math.min(step, H - y), c = document.createElement('canvas');
     c.width = W; c.height = h;
@@ -499,7 +572,15 @@ async function toChunks(file) {
   return out;
 }
 
+// 무료 한도(분당 5회)에 맞춰 요청 간격을 벌림. 요청 횟수도 세서 결과에 보여줌
+const AI_GAP_MS = 13000; let lastAi = 0, aiCalls = 0;
+async function aiGate() {
+  const t = Math.max(Date.now(), lastAi + AI_GAP_MS); lastAi = t;
+  const w = t - Date.now();
+  if (w > 500) { const keep = prog.msg; prog.msg = 'AI 분당 한도에 맞춰 천천히 처리 중'; for (let i = 0; i < w / 250 && !upCancel; i++) await new Promise(r => setTimeout(r, 250)); prog.msg = keep; }
+}
 async function analyze(chunk) {
+  await aiGate(); aiCalls++;
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 90000);
   try {
     const r = await fetch('/api/analyze', {
@@ -509,9 +590,10 @@ async function analyze(chunk) {
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('서버 오류 ' + r.status + (r.status === 504 ? ' (시간 초과)' : '')));
-    return j.transactions;
+    return j.map || j.transactions;
   } catch (e) {
-    throw new Error(e.name === 'AbortError' ? '응답이 90초 넘게 오지 않아 중단했어요. 다시 시도해보세요.' : e.message);
+    const net = /load failed|failed to fetch|networkerror/i.test(e.message || '');
+    throw new Error(e.name === 'AbortError' ? '응답이 90초 넘게 오지 않아 중단했어요. 다시 시도해보세요.' : net ? '네트워크 연결이 끊겼어요 (화면이 꺼졌거나 연결이 불안정할 수 있어요)' : e.message);
   } finally { clearTimeout(timer); }
 }
 
@@ -533,15 +615,23 @@ async function splitChunk(c) {
   return null; // PDF는 나눌 수 없음
 }
 const isTimeout = e => /초|시간 초과|504|timeout/i.test((e && e.message) || '');
+let upCancel = false, upDeadline = 0;
+function upStop() {
+  if (upCancel) throw new Error('업로드를 중단했어요.');
+  if (Date.now() > upDeadline) throw new Error('시간이 너무 오래 걸려 중단했어요. 잠시 후 다시 올리거나 파일을 나눠 올려보세요.');
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
 async function analyzeSplit(c, depth = 0, tries = 0) {
+  upStop();
   try { return await analyze(c); }
   catch (e) {
-    // 무료 한도(429)·AI 과부하(503)면 점점 길게 기다렸다가 같은 구간을 다시 시도
     const m = (e && e.message) || '';
-    const quota = /한도|429/.test(m), busy = /high demand|overload|unavailable|503|서버 오류 50\d|일시/i.test(m);
-    if ((quota || busy) && tries < 5) {
-      const keep = prog.msg; prog.msg = quota ? 'AI 사용 한도 대기 중' : 'AI 서버가 바빠서 잠시 기다리는 중';
-      await new Promise(r => setTimeout(r, (quota ? 20000 : 6000) * (tries + 1) + Math.random() * 3000));
+    const hard = /일일 한도|한도가 0/.test(m), quota = !hard && /한도|429/.test(m), busy = /high demand|overload|unavailable|503|서버 오류 50\d|일시/i.test(m), net = /네트워크 연결/.test(m);
+    // 무료 한도(429)·AI 과부하(503)·일시적 네트워크 끊김이면 잠시 기다렸다가 같은 구간을 다시 시도 (횟수 제한)
+    if ((quota || busy || net) && tries < (net ? 2 : 3)) {
+      const keep = prog.msg; prog.msg = quota ? 'AI 사용 한도 대기 중' : net ? '연결 재시도 중' : 'AI 서버가 바빠서 잠시 기다리는 중';
+      const sec = (quota ? 15 : net ? 3 : 5) * (tries + 1);
+      for (let i = 0; i < sec * 4; i++) { if (upCancel) break; await wait(250); } // 중단 버튼에 바로 반응
       prog.msg = keep;
       return analyzeSplit(c, depth, tries + 1);
     }
@@ -576,31 +666,66 @@ async function handle(files) {
   files = files.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || isCsv(f) || isXls(f));
   if (!files.length) return setStatus('이미지, PDF, CSV, 엑셀 파일만 올릴 수 있어요.', true);
   try {
+    // 엑셀/CSV는 먼저 AI 없이 직접 읽음 (열을 못 찾으면 AI로)
+    const localRows = [], aiFiles = [];
+    for (const f of files) {
+      const r = (isCsv(f) || isXls(f)) ? await localRowsOf(f) : null;
+      if (r) localRows.push(...r); else aiFiles.push(f);
+    }
     let chunks = [];
-    for (const f of files) chunks.push(...await toChunks(f));
+    for (const f of aiFiles) chunks.push(...await toChunks(f));
+    const unknown = [...new Set(localRows.map(t => t.merchant).filter(m => !ruleFor(m)))];
+    const cBatches = []; for (let i = 0; i < unknown.length; i += 100) cBatches.push(unknown.slice(i, i + 100));
     setStatus('');
-    progStart(chunks.length, 'AI가 내역을 읽는 중');
-    let all = [], fails = [];
-    for (let i = 0; i < chunks.length; i += 2) {
-      const batch = chunks.slice(i, i + 2);
+    aiCalls = 0;
+    progStart(chunks.length + cBatches.length || 1, localRows.length ? `엑셀/CSV ${localRows.length}건은 바로 읽었어요 · 분류 중` : 'AI가 내역을 읽는 중');
+    upCancel = false; upDeadline = Date.now() + 15 * 60 * 1000; // 최대 15분
+    $('upCancel').disabled = false;
+    const seen = {}, existing = new Set(txs.map(t => t.hash));
+    let readN = 0, added = 0, fails = [], okChunks = 0, aborted = '';
+    // 구간이 끝날 때마다 바로 목록에 추가해서, 중간에 멈춰도 읽은 내역은 남도록 함
+    const addRows = list => {
+      for (const t of list) {
+        readN++;
+        const base = `${t.date}|${t.merchant}|${t.amount}`;
+        seen[base] = (seen[base] || 0) + 1;
+        const hash = base + '|' + seen[base];
+        if (existing.has(hash)) continue;
+        existing.add(hash);
+        txs.push({ hash, date: t.date, merchant: t.merchant, amount: t.amount, category: ruleFor(t.merchant) || (CATS.includes(t.category) ? t.category : '기타'), saved: false, fresh: true });
+        added++;
+      }
+    };
+    let aiDone = 0, classFail = '';
+    if (localRows.length) {
+      const cmap = {};
+      for (const names of cBatches) {
+        if (upCancel || Date.now() > upDeadline || classFail) break;
+        try { Object.assign(cmap, await analyzeSplit({ classify: names })); okChunks++; } catch (e) { classFail = e.message; }
+        prog.done++;
+      }
+      localRows.forEach(t => { t.category = cmap[t.merchant]; });
+      addRows(localRows); refresh();
+      if (chunks.length) { prog.msg = 'AI가 내역을 읽는 중'; }
+    }
+    for (let i = 0; i < chunks.length; i += 1) {
+      if (upCancel) { aborted = '업로드를 중단했어요.'; break; }
+      if (Date.now() > upDeadline) { aborted = '시간이 너무 오래 걸려 중단했어요.'; break; }
+      if (!okChunks && fails.some(f => /일일 한도|한도가 0/.test(f))) { aborted = '무료 한도 문제로 바로 중단했어요.'; break; }
+      if (!okChunks && fails.length >= 4) { aborted = '연속으로 실패해서 중단했어요. 아래 원인을 확인하세요.'; break; } // 계속 실패하면 오래 붙잡지 않음
+      const batch = chunks.slice(i, i + 1);
       prog.inflight = batch.length; prog.start = Date.now();
-      const part = await Promise.all(batch.map(c => analyzeSplit(c).catch(e => { fails.push(e.message); return []; }).then(r => { prog.done++; prog.inflight--; return r; })));
-      part.forEach(p => all.push(...p));
+      const part = await Promise.all(batch.map(c => analyzeSplit(c).then(r => { okChunks++; return r; }, e => { fails.push(e.message); return []; }).then(r => { prog.done++; aiDone++; prog.inflight--; return r; })));
+      part.forEach(addRows);
+      if (added) refresh();
     }
     progEnd();
-    const seen = {}, existing = new Set(txs.map(t => t.hash));
-    let added = 0;
-    for (const t of all) {
-      const base = `${t.date}|${t.merchant}|${t.amount}`;
-      seen[base] = (seen[base] || 0) + 1;
-      const hash = base + '|' + seen[base];
-      if (existing.has(hash)) continue;
-      txs.push({ hash, date: t.date, merchant: t.merchant, amount: t.amount, category: ruleFor(t.merchant) || (CATS.includes(t.category) ? t.category : '기타'), saved: false, fresh: true });
-      added++;
-    }
     refresh();
-    if (fails.length) setStatus(`${fails.length}개 구간 실패: ${fails[0]} (읽은 ${all.length}건은 추가했어요)`, true);
-    else setStatus(`${all.length}건을 읽었고 ${added}건을 새로 추가했어요. 분류를 확인하고 저장하세요.`);
+    const skipped = chunks.length - aiDone;
+    const reason = fails.length ? fails[0] : '';
+    const used = `(AI 요청 ${aiCalls}회 사용)`, cNote = classFail ? ` 새 가맹점 분류는 AI가 실패해 일부를 '기타'로 넣었어요(${classFail}).` : '';
+    if (aborted || fails.length) setStatus(`${aborted ? aborted + ' ' : ''}${fails.length ? fails.length + '개 구간 실패' + (reason ? ': ' + reason : '') + '. ' : ''}${skipped > 0 ? '시도하지 못한 구간 ' + skipped + '개. ' : ''}읽은 ${readN}건 중 ${added}건을 추가했어요.${cNote} ${used}`, true);
+    else setStatus(`${readN}건을 읽었고 ${added}건을 새로 추가했어요. 분류를 확인하고 저장하세요.${cNote} ${used}`, !!classFail);
   } catch (e) { clearInterval(prog.timer); $('prog').classList.add('hide'); setStatus(e.message, true); }
 }
 
