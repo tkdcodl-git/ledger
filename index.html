@@ -59,9 +59,10 @@ th{text-align:center!important}
 #dash{max-width:1180px;margin:16px auto 0;padding:0 20px}
 .dt td{vertical-align:top;border-bottom:1px solid var(--line);padding:10px 8px}
 .dt td.c{text-align:center}
-.dt td.memo{white-space:pre-line;font-size:13.5px;min-width:240px;vertical-align:middle}
+.dt td.memo{white-space:pre-line;font-size:12.5px;min-width:240px;vertical-align:middle}
 .mp+.mp{margin-top:4px}
-.ln{display:flex;justify-content:space-between;gap:14px;font-size:14px;font-variant-numeric:tabular-nums}
+.ln{display:flex;justify-content:space-between;gap:14px;font-size:13px;font-variant-numeric:tabular-nums}
+.dt{font-size:13px}
 .ln.sum{font-weight:600}
 .dt tr.sr td{padding-top:6px}
 .lg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-bottom:4px}
@@ -219,8 +220,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 
 /* v1.8 모바일(아이폰) 대시보드: 표 한 화면 맞춤 + 분류별 비중 한 줄 아래로 */
 @media (max-width: 600px) {
-  #dash .dt, #history .dt { font-size: 9px; }
-  #dash .dt th, #history .dt th { font-size: 9px; font-weight: 500; }
+  #dash .dt, #history .dt { font-size: 8px; }
+  #dash .dt th, #history .dt th { font-size: 8px; font-weight: 500; }
   #dash .dt td, #history .dt td { min-width: 0 !important; }
   #dash .dt th:nth-child(1), #dash .dt td:nth-child(1), #history .dt th:nth-child(1), #history .dt td:nth-child(1) { width: 38px; }
   #dash .dt th:nth-child(2), #dash .dt td:nth-child(2), #history .dt th:nth-child(2), #history .dt td:nth-child(2) { width: 30px; }
@@ -233,7 +234,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash .dt .ln b, #history .dt .ln b { font-weight: 400; font-size: 9px; flex: none; white-space: nowrap; }
   #dash .dt .ln.sum, #history .dt .ln.sum { margin: 0; padding: 0; }
   #dash .dt .ln.sum b, #history .dt .ln.sum b { font-weight: 600; }
-  #dash .dt td:nth-child(2), #dash .dt td:nth-child(3), #history .dt td:nth-child(2), #history .dt td:nth-child(3) { font-size: 9px; }
+  #dash .dt td:nth-child(2), #dash .dt td:nth-child(3), #history .dt td:nth-child(2), #history .dt td:nth-child(3) { font-size: 8px; }
 
   /* 최근 6개월 카드값 / 분류별 비중: 세로로 한 줄씩 */
   #dash .dgrid { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
@@ -256,9 +257,9 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash .dt th:nth-child(3), #dash .dt td:nth-child(3), #history .dt th:nth-child(3), #history .dt td:nth-child(3) { width: 34px; }
   #dash .dt th:nth-child(4), #dash .dt td:nth-child(4), #history .dt th:nth-child(4), #history .dt td:nth-child(4) { width: 78px; }
   #dash .dt th:nth-child(5), #dash .dt td:nth-child(5), #history .dt th:nth-child(5), #history .dt td:nth-child(5) { width: 78px; }
-  #dash .dt .ln, #history .dt .ln { font-size: 8.5px; gap: 6px; }
-  #dash .dt .ln b, #history .dt .ln b { font-size: 8.5px; }
-  #dash .dt td.memo, #history .dt td.memo { vertical-align: middle; font-size: 8px; line-height: 1.2; }
+  #dash .dt .ln, #history .dt .ln { font-size: 7.5px; gap: 6px; }
+  #dash .dt .ln b, #history .dt .ln b { font-size: 7.5px; }
+  #dash .dt td.memo, #history .dt td.memo { vertical-align: middle; font-size: 7px; line-height: 1.2; }
   #dash .dt .mp + .mp, #history .dt .mp + .mp { margin-top: 3px; }
 
   /* v2.0 합계 행 최하단 고정 + 상단 메뉴 여백 */
@@ -275,9 +276,9 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 <section id="history" class="hide"><div class="panel"><h2>월별 누적 내역</h2><p class="muted">대시보드에서 저장한 월별 잔액·수입·지출·비고가 자동으로 누적됩니다.</p><div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="historyRows"></tbody></table></div></div></section>
 
 <section id="dash" class="hide">
-  <div class="panel"><h2>최근 2개월</h2>
+  <div class="panel">
     <div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="dashRows"></tbody></table></div>
-    <p class="muted">단위: 만원 · 카드값과 비고는 거래 내역에서 자동 계산돼요. 잔액·수입·그 밖의 지출은 '입력'으로 넣어요.</p></div>
+    </div>
   <div class="dgrid">
     <div class="panel"><h2>최근 6개월 수입/지출</h2><div id="lineChart"></div></div>
     <div class="panel"><div class="bar"><h2 style="margin:0">분류별 비중</h2><select id="catMonth" class="btn"></select></div><div id="catBars"></div></div>
@@ -337,7 +338,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v2.0';
+const APP_VERSION = 'v2.1';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -576,7 +577,7 @@ function dashboardRow(m, card) {
   const prev = (ledger[monthAdd(m, -1)] || {}).balance;
   const diff = (L.balance != null && prev != null) ? L.balance - prev : null;
   const memo = c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
-  return `<tr class="r1"><td class="c" rowspan="2"><b>${m.replace('-', '')}</b><br><button class="btn sm" data-m="${m}">입력</button></td>
+  return `<tr class="r1"><td class="c" rowspan="2">${m.replace('-', '')}<br><button class="btn sm" data-m="${m}">입력</button></td>
     <td class="n" rowspan="2">${L.balance != null ? mm(L.balance) : '-'}</td>
     <td class="n ${diff < 0 ? 'neg' : ''}" rowspan="2">${diff != null ? mm(diff) : '-'}</td>
     <td class="its">${lns(inc)}</td>
@@ -612,7 +613,7 @@ function drawDash() {
 }
 function trendSVG(labels, data) {
   const mob = window.matchMedia('(max-width:600px)').matches;
-  const W = mob ? 340 : 560, H = mob ? 220 : 260, pl = 38, pr = 10, pt = 22, pb = 26;
+  const W = mob ? 340 : 560, H = mob ? 160 : 210, pl = 38, pr = 10, pt = 22, pb = 26;
   const all = data.flatMap(d => [d.bal, d.inc, d.exp]).filter(v => v != null);
   const max = Math.max(10, ...all) * 1.12, n = labels.length, step = (W - pl - pr) / n;
   const cx = i => pl + step * (i + 0.5), y = v => pt + (H - pt - pb) * (1 - v / max), base = y(0);
@@ -637,7 +638,7 @@ function trendSVG(labels, data) {
     return s;
   }).join('');
   const xl = labels.map((l, i) => `<text x="${cx(i)}" y="${H - 9}" text-anchor="middle" font-size="10" fill="#69766f">${l}</text>`).join('');
-  return `<div class="lg"><span><i style="background:#cfe2d9"></i>잔액</span><span><i style="background:#0f7b5f"></i>수입 합계</span><span><i style="background:#b4492f"></i>지출 합계</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 6개월 잔액, 수입, 지출(만원)">${g}${bars}${line('inc', '#0f7b5f')}${line('exp', '#b4492f')}${lbl}${xl}</svg><div class="muted">단위: 만원 · 지출은 카드값 + 그 밖의 지출 합계(양수)</div>`;
+  return `<div class="lg"><span><i style="background:#cfe2d9"></i>잔액</span><span><i style="background:#0f7b5f"></i>수입 합계</span><span><i style="background:#b4492f"></i>지출 합계</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 6개월 잔액, 수입, 지출(만원)">${g}${bars}${line('inc', '#0f7b5f')}${line('exp', '#b4492f')}${lbl}${xl}</svg>`;
 }
 function lineSVG(labels, vals, compact = false) {
   const W = compact && window.matchMedia('(max-width:600px)').matches ? 340 : 560, H = compact ? 150 : 240, pl = 40, pr = 14, pt = 18, pb = 24, max = Math.max(1, ...vals) * 1.15;
