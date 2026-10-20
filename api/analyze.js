@@ -21,22 +21,37 @@ JSON 배열 외의 설명이나 코드블록은 쓰지 마세요.
 
     // 화면에서 느릴 때 다른 모델로 재시도할 수 있게 모델명을 받음 (gemini-* 만 허용)
     const model = /^gemini-[\w.\-]+$/.test(reqModel || '') ? reqModel : (process.env.GEMINI_MODEL || 'gemini-3.8-flash');
-    const call = cfg => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    const fallback = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
+    const deadline = Date.now() + 55000, sleep = ms => new Promise(r => setTimeout(r, ms));
+    const call = (mdl, cfg) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${mdl}:generateContent`, {
       method: 'POST',
-      signal: AbortSignal.timeout(55000),
+      signal: AbortSignal.timeout(Math.max(3000, deadline - Date.now())),
       headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'content-type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts }], generationConfig: cfg })
     });
-    // JSON으로만 답하게 하고(군더더기 출력 제거), 생각(thinking)을 낮춰 응답 속도를 높임.
-    // 지원하지 않는 옵션이면 400이 오므로 옵션을 줄여 재시도
+    // JSON으로만 답하게 하고, 생각(thinking)을 낮춰 속도를 높임. 지원하지 않는 옵션이면 400 → 옵션을 줄여 재시도
     const base = { temperature: 0, maxOutputTokens: 8192, responseMimeType: 'application/json' };
-    let r = await call({ ...base, thinkingConfig: { thinkingLevel: 'low' } });
-    if (r.status === 400) r = await call(base);
-    if (r.status === 400) r = await call({ temperature: 0, maxOutputTokens: 8192 });
+    const callModel = async mdl => {
+      let r = await call(mdl, { ...base, thinkingConfig: { thinkingLevel: 'low' } });
+      if (r.status === 400) r = await call(mdl, base);
+      if (r.status === 400) r = await call(mdl, { temperature: 0, maxOutputTokens: 8192 });
+      return r;
+    };
+    const busy = st => st === 503 || st === 500 || st === 502 || st === 504;
+    // 과부하(503 등)면 잠깐 쉬고 같은 모델로 재시도, 그래도 안 되면 대체 모델로 시도
+    let r = await callModel(model);
+    for (let i = 0; i < 2 && busy(r.status) && deadline - Date.now() > 12000; i++) {
+      await sleep(1500 * (i + 1));
+      r = await callModel(model);
+    }
+    if (busy(r.status) && fallback && fallback !== model && deadline - Date.now() > 8000) {
+      const r2 = await callModel(fallback);
+      if (r2.ok) r = r2;
+    }
     const j = await r.json();
     if (!r.ok) {
       const msg = r.status === 429 ? '무료 사용 한도에 도달했어요. 잠시 후 다시 시도하세요.' : (j.error?.message || 'AI 호출 실패');
-      return res.status(r.status === 429 ? 429 : 502).json({ error: msg });
+      return res.status(r.status === 429 ? 429 : busy(r.status) ? 503 : 502).json({ error: msg });
     }
     const out = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
     const list = parseList(out);
