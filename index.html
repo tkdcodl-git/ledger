@@ -61,6 +61,8 @@ th{text-align:center!important}
 .dt td.c{text-align:center}
 .dt td.memo{white-space:pre-line;font-size:12.5px;min-width:240px;vertical-align:middle}
 .mp+.mp{margin-top:4px}
+.fl input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;max-width:100%;min-width:0;min-height:40px;background:#fff;text-align:left}
+.fl input[type=date]::-webkit-date-and-time-value{text-align:left}
 .ln{display:flex;justify-content:space-between;gap:14px;font-size:13px;font-variant-numeric:tabular-nums}
 .dt{font-size:13px}
 .ln.sum{font-weight:600}
@@ -266,6 +268,26 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash .dt tr.r1 td.its, #history .dt tr.r1 td.its { padding-bottom: 5px; }
   #dash .dt tr.sr td, #history .dt tr.sr td { padding-top: 5px; padding-bottom: 7px; border-left: 1px solid #e6ebe9; }
   #tabs { margin-top: 24px !important; }
+
+  /* v2.2 표 전체 7px, 년월 최소 너비, 헤더·합계 행 높이 축소 */
+  #dash .dt, #history .dt { font-size: 7px; }
+  #dash .dt th, #history .dt th { font-size: 7px; padding-top: 2px; padding-bottom: 2px; line-height: 1.1; }
+  #dash .dt td:nth-child(2), #dash .dt td:nth-child(3), #history .dt td:nth-child(2), #history .dt td:nth-child(3) { font-size: 7px; }
+  #dash .dt .ln, #history .dt .ln, #dash .dt .ln b, #history .dt .ln b { font-size: 7px; }
+  #dash .dt .ln.sum, #history .dt .ln.sum { line-height: 1.1; }
+  #dash .dt th:nth-child(1), #dash .dt td:nth-child(1), #history .dt th:nth-child(1), #history .dt td:nth-child(1) { width: 32px; padding-left: 2px; padding-right: 2px; white-space: nowrap; }
+  #dash .dt tr.r1 td.its, #history .dt tr.r1 td.its { padding-bottom: 2px; }
+  #dash .dt tr.sr td, #history .dt tr.sr td { padding: 2px 4px 3px; }
+  #dash .dt .btn.sm, #history .dt .btn.sm { font-size: 7px; }
+
+  /* 그래프 글자 축소 */
+  #dash #lineChart svg text { font-size: 7px; }
+  #dash #lineChart svg text[font-size="9"] { font-size: 6.5px; }
+  #dash .lg { font-size: 9px; gap: 8px; }
+  #dash .lg i { width: 8px; height: 8px; }
+
+  /* 입력칸 포커스 시 iOS 자동 확대 방지(16px 미만이면 확대됨) */
+  input:not([type=checkbox]):not([type=file]), textarea:not(#memo), #modal select { font-size: 16px !important; }
 }
 
 </style>
@@ -338,7 +360,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v2.1';
+const APP_VERSION = 'v2.2';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
