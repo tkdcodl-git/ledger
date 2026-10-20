@@ -399,7 +399,7 @@ td select { border-radius: 999px; background: #faf9f6; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v2.7';
+const APP_VERSION = 'v2.9';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -475,7 +475,7 @@ const isXls = f => /\.xlsx?$/i.test(f.name);
 function csvChunks(text) {
   const lines = text.split(/\r?\n/).filter(l => l.replace(/[,\s"]/g, ''));
   const head = lines[0], out = [];
-  for (let i = 1; i < lines.length; i += 250) out.push({ text: [head, ...lines.slice(i, i + 250)].join('\n') });
+  for (let i = 1; i < lines.length; i += 80) out.push({ text: [head, ...lines.slice(i, i + 80)].join('\n') }); // 구간이 작을수록 서버 제한시간 안에 끝나요
   return out.length ? out : [{ text: lines.join('\n') }];
 }
 async function toChunks(file) {
@@ -489,7 +489,7 @@ async function toChunks(file) {
   if (file.type === 'application/pdf') return [{ media_type: 'application/pdf', data: await b64(file) }];
   const bmp = await createImageBitmap(file);
   const s = Math.min(1, 1100 / bmp.width), W = Math.round(bmp.width * s), H = Math.round(bmp.height * s);
-  const step = 1800, out = [];
+  const step = 1200, out = [];
   for (let y = 0; y < H; y += step) {
     const h = Math.min(step, H - y), c = document.createElement('canvas');
     c.width = W; c.height = h;
@@ -513,6 +513,43 @@ async function analyze(chunk) {
   } catch (e) {
     throw new Error(e.name === 'AbortError' ? '응답이 90초 넘게 오지 않아 중단했어요. 다시 시도해보세요.' : e.message);
   } finally { clearTimeout(timer); }
+}
+
+// 서버가 제한시간 안에 응답하지 못하면 그 구간을 반으로 나눠 자동으로 다시 시도
+async function splitChunk(c) {
+  if (c.text) {
+    const lines = c.text.split('\n'), head = lines[0], body = lines.slice(1);
+    if (body.length < 16) return null;
+    const mid = Math.ceil(body.length / 2);
+    return [{ text: [head, ...body.slice(0, mid)].join('\n') }, { text: [head, ...body.slice(mid)].join('\n') }];
+  }
+  if (c.media_type === 'image/jpeg') {
+    const bmp = await createImageBitmap(await (await fetch('data:image/jpeg;base64,' + c.data)).blob());
+    if (bmp.height < 600) return null;
+    const h1 = Math.floor(bmp.height / 2), h2 = bmp.height - h1;
+    const cut = (y, h) => { const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = h; cv.getContext('2d').drawImage(bmp, 0, y, bmp.width, h, 0, 0, bmp.width, h); return { media_type: 'image/jpeg', data: cv.toDataURL('image/jpeg', 0.85).split(',')[1] }; };
+    return [cut(0, h1), cut(h1, h2)];
+  }
+  return null; // PDF는 나눌 수 없음
+}
+const isTimeout = e => /초|시간 초과|504|timeout/i.test((e && e.message) || '');
+async function analyzeSplit(c, depth = 0, tries = 0) {
+  try { return await analyze(c); }
+  catch (e) {
+    // 무료 사용 한도(429)면 잠시 기다렸다가 같은 구간을 다시 시도
+    if (/한도|429/.test((e && e.message) || '') && tries < 3) {
+      const keep = prog.msg; prog.msg = 'AI 사용 한도 대기 중';
+      await new Promise(r => setTimeout(r, 20000));
+      prog.msg = keep;
+      return analyzeSplit(c, depth, tries + 1);
+    }
+    if (!isTimeout(e) || depth >= 3) throw e;
+    const parts = await splitChunk(c);
+    if (!parts) throw e;
+    const out = [];
+    for (const p of parts) out.push(...await analyzeSplit(p, depth + 1));
+    return out;
+  }
 }
 
 // 진행바: 단계가 끝날 때마다 올라가고, 응답을 기다리는 동안에도 천천히 차오름
@@ -545,7 +582,7 @@ async function handle(files) {
     for (let i = 0; i < chunks.length; i += 3) {
       const batch = chunks.slice(i, i + 3);
       prog.inflight = batch.length; prog.start = Date.now();
-      const part = await Promise.all(batch.map(c => analyze(c).catch(e => { fails.push(e.message); return []; }).then(r => { prog.done++; prog.inflight--; return r; })));
+      const part = await Promise.all(batch.map(c => analyzeSplit(c).catch(e => { fails.push(e.message); return []; }).then(r => { prog.done++; prog.inflight--; return r; })));
       part.forEach(p => all.push(...p));
     }
     progEnd();
