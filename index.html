@@ -67,6 +67,7 @@ th{text-align:center!important}
 .dt{font-size:13px}
 .ln.sum{font-weight:600}
 .dt tr.sr td{padding-top:6px}
+.dt tr.r1 td.memo{border-bottom:0}
 .lg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-bottom:4px}
 .lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
@@ -288,6 +289,10 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 
   /* 입력칸 포커스 시 iOS 자동 확대 방지(16px 미만이면 확대됨) */
   input:not([type=checkbox]):not([type=file]), textarea:not(#memo), #modal select { font-size: 16px !important; }
+
+  /* v2.3 표 좌우 바깥 여백 최소화 → 비고 확대 */
+  #dash, #history { padding-left: 3px; padding-right: 3px; }
+  #dash > .panel, #history > .panel { padding-left: 3px; padding-right: 3px; }
 }
 
 </style>
@@ -360,7 +365,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v2.2';
+const APP_VERSION = 'v2.3';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -604,8 +609,8 @@ function dashboardRow(m, card) {
     <td class="n ${diff < 0 ? 'neg' : ''}" rowspan="2">${diff != null ? mm(diff) : '-'}</td>
     <td class="its">${lns(inc)}</td>
     <td class="its">${lns(exp)}</td>
-    <td class="memo" rowspan="2">${memo ? `<div class="mp">${esc(memo)}</div>` : ''}${L.note && L.note.trim() ? `<div class="mp">${esc(L.note.trim())}</div>` : ''}</td></tr>
-    <tr class="sr"><td>${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</td><td>${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td></tr>`;
+    <td class="memo">${memo ? `<div class="mp">${esc(memo)}</div>` : ''}${L.note && L.note.trim() ? `<div class="mp">${esc(L.note.trim())}</div>` : ''}</td></tr>
+    <tr class="sr"><td>${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</td><td>${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td><td></td></tr>`;
 }
 function drawDash() {
   const card = cardByMonth(), m1 = latestMonth(), m2 = monthAdd(m1, -1);
@@ -786,6 +791,24 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   $('history').classList.toggle('hide', b.dataset.t !== 'history');
   if (b.dataset.t === 'dash' || b.dataset.t === 'history') drawDash();
 });
+// 좌우 스와이프로 탭 이동 (거래 내역 ↔ 대시보드 ↔ 전체 누적)
+(() => {
+  const order = ['tx', 'dash', 'history'];
+  let sx = 0, sy = 0, st = 0, ok = false;
+  const hScroll = el => { for (; el && el !== document.body; el = el.parentElement) { const o = getComputedStyle(el).overflowX; if ((o === 'auto' || o === 'scroll') && el.scrollWidth > el.clientWidth + 1) return true; } return false; };
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; st = Date.now();
+    ok = e.touches.length === 1 && $('modal').classList.contains('hide') && !e.target.closest('input,textarea,select') && !hScroll(e.target);
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!ok) return; ok = false;
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2 || Date.now() - st > 800) return;
+    const cur = order.indexOf((document.querySelector('.tab.on') || {}).dataset?.t), nx = order[cur + (dx < 0 ? 1 : -1)];
+    if (cur < 0 || !nx) return;
+    document.querySelector(`.tab[data-t="${nx}"]`).click(); window.scrollTo(0, 0);
+  }, { passive: true });
+})();
 $('catBtn').onclick = openCats;
 $('manualAdd').onclick = openManualTx;
 $('catMonth').onchange = e => { dashCatMonth = e.target.value; drawDash(); };
