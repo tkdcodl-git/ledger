@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
 :root{--bg:#f5f7f6;--card:#fff;--ink:#16211d;--mute:#69766f;--line:#e3e9e6;--accent:#0f7b5f;--accent-soft:#e3f3ed;--warn:#b4492f}
-*{box-sizing:border-box}
+*{box-sizing:border-box;touch-action:manipulation}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Pretendard Variable",Pretendard,-apple-system,"Malgun Gothic",sans-serif}
 header{display:flex;align-items:center;gap:12px;padding:14px 24px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
 header h1{font-size:17px;margin:0;font-weight:700;flex:1}
@@ -62,7 +62,10 @@ th{text-align:center!important}
 .dt td.memo{white-space:pre-line;font-size:13.5px;min-width:240px;vertical-align:middle}
 .mp+.mp{margin-top:4px}
 .ln{display:flex;justify-content:space-between;gap:14px;font-size:14px;font-variant-numeric:tabular-nums}
-.ln.sum{border-top:1px solid var(--line);margin-top:3px;padding-top:3px}
+.ln.sum{font-weight:600}
+.dt tr.sr td{padding-top:6px}
+.lg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-bottom:4px}
+.lg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
 .dgrid .panel{margin-top:0}
 @media(max-width:900px){.dgrid{grid-template-columns:1fr}}
@@ -228,7 +231,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash .dt .ln, #history .dt .ln { font-size: 9px; font-weight: 400; gap: 3px; line-height: 1.25; }
   #dash .dt .ln span, #history .dt .ln span { min-width: 0; overflow-wrap: anywhere; }
   #dash .dt .ln b, #history .dt .ln b { font-weight: 400; font-size: 9px; flex: none; white-space: nowrap; }
-  #dash .dt .ln.sum, #history .dt .ln.sum { margin-top: 2px; padding-top: 2px; }
+  #dash .dt .ln.sum, #history .dt .ln.sum { margin: 0; padding: 0; }
   #dash .dt .ln.sum b, #history .dt .ln.sum b { font-weight: 600; }
   #dash .dt td:nth-child(2), #dash .dt td:nth-child(3), #history .dt td:nth-child(2), #history .dt td:nth-child(3) { font-size: 9px; }
 
@@ -257,6 +260,11 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #dash .dt .ln b, #history .dt .ln b { font-size: 8.5px; }
   #dash .dt td.memo, #history .dt td.memo { vertical-align: middle; font-size: 8px; line-height: 1.2; }
   #dash .dt .mp + .mp, #history .dt .mp + .mp { margin-top: 3px; }
+
+  /* v2.0 합계 행 최하단 고정 + 상단 메뉴 여백 */
+  #dash .dt tr.r1 td.its, #history .dt tr.r1 td.its { padding-bottom: 5px; }
+  #dash .dt tr.sr td, #history .dt tr.sr td { padding-top: 5px; padding-bottom: 7px; border-left: 1px solid #e6ebe9; }
+  #tabs { margin-top: 24px !important; }
 }
 
 </style>
@@ -271,7 +279,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
     <div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="dashRows"></tbody></table></div>
     <p class="muted">단위: 만원 · 카드값과 비고는 거래 내역에서 자동 계산돼요. 잔액·수입·그 밖의 지출은 '입력'으로 넣어요.</p></div>
   <div class="dgrid">
-    <div class="panel"><h2>최근 6개월 카드값</h2><div id="lineChart"></div></div>
+    <div class="panel"><h2>최근 6개월 수입/지출</h2><div id="lineChart"></div></div>
     <div class="panel"><div class="bar"><h2 style="margin:0">분류별 비중</h2><select id="catMonth" class="btn"></select></div><div id="catBars"></div></div>
   </div>
 </section>
@@ -329,7 +337,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.9';
+const APP_VERSION = 'v2.0';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -568,12 +576,13 @@ function dashboardRow(m, card) {
   const prev = (ledger[monthAdd(m, -1)] || {}).balance;
   const diff = (L.balance != null && prev != null) ? L.balance - prev : null;
   const memo = c ? '■ 카드값 (5만 이상)\n- ' + Object.entries(c.cats).filter(e => e[1] / 10000 >= 5).sort((a, b) => b[1] - a[1]).map(e => `${e[0]}(${mm(e[1] / 10000)})`).join(' ') : '';
-  return `<tr><td class="c"><b>${m.replace('-', '')}</b><br><button class="btn sm" data-m="${m}">입력</button></td>
-    <td class="n">${L.balance != null ? mm(L.balance) : '-'}</td>
-    <td class="n ${diff < 0 ? 'neg' : ''}">${diff != null ? mm(diff) : '-'}</td>
-    <td>${lns(inc)}${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</td>
-    <td>${lns(exp)}${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td>
-    <td class="memo">${memo ? `<div class="mp">${esc(memo)}</div>` : ''}${L.note && L.note.trim() ? `<div class="mp">${esc(L.note.trim())}</div>` : ''}</td></tr>`;
+  return `<tr class="r1"><td class="c" rowspan="2"><b>${m.replace('-', '')}</b><br><button class="btn sm" data-m="${m}">입력</button></td>
+    <td class="n" rowspan="2">${L.balance != null ? mm(L.balance) : '-'}</td>
+    <td class="n ${diff < 0 ? 'neg' : ''}" rowspan="2">${diff != null ? mm(diff) : '-'}</td>
+    <td class="its">${lns(inc)}</td>
+    <td class="its">${lns(exp)}</td>
+    <td class="memo" rowspan="2">${memo ? `<div class="mp">${esc(memo)}</div>` : ''}${L.note && L.note.trim() ? `<div class="mp">${esc(L.note.trim())}</div>` : ''}</td></tr>
+    <tr class="sr"><td>${inc.length ? sumLn('합계', inc.reduce((a, b) => a + b.v, 0)) : '<span class="muted">-</span>'}</td><td>${sumLn('합계', exp.reduce((a, b) => a + b.v, 0))}</td></tr>`;
 }
 function drawDash() {
   const card = cardByMonth(), m1 = latestMonth(), m2 = monthAdd(m1, -1);
@@ -583,7 +592,15 @@ function drawDash() {
 
   // 최근 6개월 카드값
   const ms = Array.from({ length: 6 }, (_, i) => monthAdd(m1, i - 5));
-  $('lineChart').innerHTML = lineSVG(ms.map(m => m.slice(2).replace('-', '.')), ms.map(m => card[m] ? card[m].total / 10000 : 0), true);
+  const trend = ms.map(m => {
+    const L = ledger[m], c = card[m];
+    return {
+      bal: L && L.balance != null ? L.balance : null,
+      inc: L ? (L.income || []).reduce((a, i) => a + i.v, 0) : null,
+      exp: (L || c) ? (c ? c.total / 10000 : 0) + (L ? (L.expense || []).reduce((a, e) => a + Math.abs(e.v), 0) : 0) : null
+    };
+  });
+  $('lineChart').innerHTML = trendSVG(ms.map(m => m.slice(2).replace('-', '.')), trend);
 
   // 분류별 비중
   const opts = [...ms].reverse();
@@ -592,6 +609,35 @@ function drawDash() {
   const cats = Object.entries((card[dashCatMonth] || { cats: {} }).cats).filter(e => e[1] > 0).sort((a, b) => b[1] - a[1]);
   const tot = cats.reduce((a, e) => a + e[1], 0);
   $('catBars').innerHTML = cats.length ? cats.map(([c, v]) => `<div class="hb"><span>${esc(c)}</span><div class="track"><i style="width:${(v / tot * 100).toFixed(1)}%"></i></div><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('') : '<p class="muted">이 달의 거래 내역이 없어요.</p>';
+}
+function trendSVG(labels, data) {
+  const mob = window.matchMedia('(max-width:600px)').matches;
+  const W = mob ? 340 : 560, H = mob ? 220 : 260, pl = 38, pr = 10, pt = 22, pb = 26;
+  const all = data.flatMap(d => [d.bal, d.inc, d.exp]).filter(v => v != null);
+  const max = Math.max(10, ...all) * 1.12, n = labels.length, step = (W - pl - pr) / n;
+  const cx = i => pl + step * (i + 0.5), y = v => pt + (H - pt - pb) * (1 - v / max), base = y(0);
+  const halo = 'stroke="#fff" stroke-width="3" paint-order="stroke"';
+  let g = '';
+  for (let k = 0; k <= 4; k++) { const v = max * k / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e9e6"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="#69766f">${Math.round(v)}</text>`; }
+  const bw = Math.min(30, step * 0.55);
+  const bars = data.map((d, i) => {
+    if (d.bal == null) return '';
+    const top = y(Math.max(d.bal, 0)), h = base - top;
+    return `<rect x="${cx(i) - bw / 2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="#cfe2d9"/><text x="${cx(i)}" y="${h >= 14 ? base - 4 : top - 4}" text-anchor="middle" font-size="9" fill="#2f5d4c">${mm(d.bal)}</text>`;
+  }).join('');
+  const line = (key, color) => {
+    const pts = data.map((d, i) => d[key] == null ? null : [cx(i), y(d[key])]).filter(Boolean);
+    return (pts.length > 1 ? `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="2.2" stroke-linejoin="round"/>` : '') + pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${color}"/>`).join('');
+  };
+  const lbl = data.map((d, i) => {
+    const up = d.inc != null && d.exp != null ? d.inc >= d.exp : true; // 값이 큰 쪽 라벨은 위, 작은 쪽은 아래
+    let s = '';
+    if (d.inc != null) s += `<text x="${cx(i)}" y="${y(d.inc) + (up ? -7 : 14)}" text-anchor="middle" font-size="9" fill="#0f7b5f" ${halo}>${mm(d.inc)}</text>`;
+    if (d.exp != null) s += `<text x="${cx(i)}" y="${y(d.exp) + (up ? 14 : -7)}" text-anchor="middle" font-size="9" fill="#b4492f" ${halo}>${mm(d.exp)}</text>`;
+    return s;
+  }).join('');
+  const xl = labels.map((l, i) => `<text x="${cx(i)}" y="${H - 9}" text-anchor="middle" font-size="10" fill="#69766f">${l}</text>`).join('');
+  return `<div class="lg"><span><i style="background:#cfe2d9"></i>잔액</span><span><i style="background:#0f7b5f"></i>수입 합계</span><span><i style="background:#b4492f"></i>지출 합계</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 6개월 잔액, 수입, 지출(만원)">${g}${bars}${line('inc', '#0f7b5f')}${line('exp', '#b4492f')}${lbl}${xl}</svg><div class="muted">단위: 만원 · 지출은 카드값 + 그 밖의 지출 합계(양수)</div>`;
 }
 function lineSVG(labels, vals, compact = false) {
   const W = compact && window.matchMedia('(max-width:600px)').matches ? 340 : 560, H = compact ? 150 : 240, pl = 40, pr = 14, pt = 18, pb = 24, max = Math.max(1, ...vals) * 1.15;
