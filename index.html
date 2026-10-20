@@ -213,6 +213,37 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #manualAdd { white-space: nowrap; }
 }
 
+/* v1.8 모바일(아이폰) 대시보드: 표 한 화면 맞춤 + 분류별 비중 한 줄 아래로 */
+@media (max-width: 600px) {
+  #dash .dt, #history .dt { font-size: 9px; }
+  #dash .dt th, #history .dt th { font-size: 9px; font-weight: 500; }
+  #dash .dt td, #history .dt td { min-width: 0 !important; }
+  #dash .dt th:nth-child(1), #dash .dt td:nth-child(1), #history .dt th:nth-child(1), #history .dt td:nth-child(1) { width: 38px; }
+  #dash .dt th:nth-child(2), #dash .dt td:nth-child(2), #history .dt th:nth-child(2), #history .dt td:nth-child(2) { width: 30px; }
+  #dash .dt th:nth-child(3), #dash .dt td:nth-child(3), #history .dt th:nth-child(3), #history .dt td:nth-child(3) { width: 32px; }
+  #dash .dt th:nth-child(4), #dash .dt td:nth-child(4), #history .dt th:nth-child(4), #history .dt td:nth-child(4) { width: 72px; }
+  #dash .dt th:nth-child(5), #dash .dt td:nth-child(5), #history .dt th:nth-child(5), #history .dt td:nth-child(5) { width: 72px; }
+  #dash .dt td.memo, #history .dt td.memo { font-size: 8px; line-height: 1.3; }
+  #dash .dt .ln, #history .dt .ln { font-size: 9px; font-weight: 400; gap: 3px; line-height: 1.25; }
+  #dash .dt .ln span, #history .dt .ln span { min-width: 0; overflow-wrap: anywhere; }
+  #dash .dt .ln b, #history .dt .ln b { font-weight: 400; font-size: 9px; flex: none; white-space: nowrap; }
+  #dash .dt .ln.sum, #history .dt .ln.sum { margin-top: 2px; padding-top: 2px; }
+  #dash .dt .ln.sum b, #history .dt .ln.sum b { font-weight: 600; }
+  #dash .dt td:nth-child(2), #dash .dt td:nth-child(3), #history .dt td:nth-child(2), #history .dt td:nth-child(3) { font-size: 9px; }
+
+  /* 최근 6개월 카드값 / 분류별 비중: 세로로 한 줄씩 */
+  #dash .dgrid { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 8px; }
+  #dash #lineChart svg { height: auto; }
+  #dash #lineChart .muted { font-size: 10px; }
+  #dash .bar { gap: 8px; }
+  #dash #catMonth { max-width: none; padding: 4px 8px; font-size: 12px; }
+  #dash .hb { gap: 6px; font-size: 12px; margin: 7px 0; }
+  #dash .hb span { width: 78px; font-size: 12px; }
+  #dash .hb b { width: 92px; font-size: 11px; }
+  #dash .track { min-width: 20px; }
+  #dash .muted { font-size: 10px; }
+}
+
 </style>
 </head>
 <body>
@@ -287,7 +318,7 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v1.7';
+const APP_VERSION = 'v1.8';
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -297,7 +328,7 @@ const man = n => (Math.round(n / 1000) / 10).toString();
 
 $('ver').textContent = APP_VERSION;
 let sb;
-let txs = [], rules = [], removed = new Set(), rulesDirty = new Set();
+let txs = [], rules = [], removed = new Set(), rulesDirty = new Set(), monthInit = false;
 
 try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) { setStatus('Supabase 설정을 확인하세요: ' + e.message, true); }
 
@@ -456,10 +487,11 @@ async function handle(files) {
 // ---------- 화면 ----------
 function refresh() {
   txs.sort((a, b) => b.date.localeCompare(a.date));
-  const months = [...new Set([...txs.map(t => t.date.slice(0, 7)), ...Object.keys(ledger || {}), nowMonth()])].sort().reverse();
+  const months = [...new Set([...txs.map(t => t.date.slice(0, 7)), ...Object.keys(ledger || {}), nowMonth(), monthAdd(nowMonth(), -1)])].sort().reverse();
   const cur = $('month').value;
   $('month').innerHTML = months.map(m => `<option value="${m}">${m.replace('-', '년 ')}월</option>`).join('');
-  if (months.includes(cur)) $('month').value = cur;
+  if (!monthInit) { $('month').value = monthAdd(nowMonth(), -1); monthInit = true; } // 처음 접속 시 전월을 기본으로
+  else if (months.includes(cur)) $('month').value = cur;
   draw(); drawDash();
 }
 function draw() {
@@ -551,7 +583,7 @@ function drawDash() {
   $('catBars').innerHTML = cats.length ? cats.map(([c, v]) => `<div class="hb"><span>${esc(c)}</span><div class="track"><i style="width:${(v / tot * 100).toFixed(1)}%"></i></div><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('') : '<p class="muted">이 달의 거래 내역이 없어요.</p>';
 }
 function lineSVG(labels, vals, compact = false) {
-  const W = 560, H = compact ? 150 : 240, pl = 40, pr = 14, pt = 18, pb = 24, max = Math.max(1, ...vals) * 1.15;
+  const W = compact && window.matchMedia('(max-width:600px)').matches ? 340 : 560, H = compact ? 150 : 240, pl = 40, pr = 14, pt = 18, pb = 24, max = Math.max(1, ...vals) * 1.15;
   const x = i => pl + i * (W - pl - pr) / (vals.length - 1), y = v => pt + (H - pt - pb) * (1 - v / max);
   let g = '';
   for (let k = 0; k <= 4; k++) { const v = max * k / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e9e6"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="#69766f">${Math.round(v)}</text>`; }
