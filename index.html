@@ -485,6 +485,18 @@ td select { border-radius: 8px; background: #faf9f6; }
 .dt .ln.sum, .dt .ln.sum b { font-weight: 400 !important; }
 .dt thead th { font-weight: 700 !important; color: var(--ink); }
 .dt tbody tr.r1:first-child td.n { font-weight: 700; }
+
+/* v3.6 최근 달 년월 굵게, 모바일 배경 복원, PC 대시보드 배치 */
+.dt tbody tr.r1:first-child td.c { font-weight: 700; }
+.dt tbody tr.r1:first-child td.c .btn { font-weight: 400; }
+@media (max-width: 600px) {
+  html { background: radial-gradient(760px 360px at 8% 0, #ebe7fb 0, transparent 70%), radial-gradient(680px 340px at 100% 0, #def2ee 0, transparent 65%), var(--bg) !important; background-repeat: no-repeat !important; }
+  #topCover { display: none !important; }
+}
+@media (min-width: 601px) {
+  #dash .dgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+  #dash .dgrid > .panel:first-child { grid-column: 1 / -1; }
+}
 </style>
 </head>
 <body>
