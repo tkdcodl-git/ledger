@@ -350,6 +350,15 @@ td select { border-radius: 8px; background: #faf9f6; }
 #dash .dt thead th, #history .dt thead th { padding-top: 1px !important; padding-bottom: 1px !important; line-height: 1 !important; height: auto; }
 #dash #lineChart svg { display: block; }
 #dash .dgrid .panel h2 { margin-bottom: 4px; }
+
+/* v2.7 카드사별 금액 도넛 */
+.cdw { display: flex; align-items: center; gap: 14px; }
+.cdw .donut { width: 120px; height: 120px; flex: 0 0 auto; }
+.cdl { flex: 1; min-width: 0; }
+.cdr { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cdr i { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
+.cdr span { flex: 1; }
+@media (max-width: 600px) { .cdw .donut { width: 104px; height: 104px; } .cdr { font-size: 11px; } }
 </style>
 </head>
 <body>
@@ -364,6 +373,7 @@ td select { border-radius: 8px; background: #faf9f6; }
   <div class="dgrid">
     <div class="panel"><h2>최근 6개월 수입/지출</h2><div id="lineChart"></div></div>
     <div class="panel"><div class="bar"><h2 style="margin:0">분류별 비중</h2><select id="catMonth" class="btn"></select></div><div id="catBars"></div></div>
+    <div class="panel"><h2 style="margin:0 0 6px">카드사별 금액 <span class="muted" id="cardMonthLbl" style="font-weight:400"></span></h2><div id="cardDonut"></div></div>
   </div>
 </section>
 
@@ -1011,6 +1021,22 @@ function drawDash() {
   const cats = Object.entries((card[dashCatMonth] || { cats: {} }).cats).filter(e => e[1] > 0).sort((a, b) => b[1] - a[1]);
   const tot = cats.reduce((a, e) => a + e[1], 0);
   $('catBars').innerHTML = cats.length ? cats.map(([c, v]) => `<div class="hb"><span>${esc(c)}</span><div class="track"><i style="width:${(v / tot * 100).toFixed(1)}%"></i></div><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('') : '<p class="muted">이 달의 거래 내역이 없어요.</p>';
+  drawCardDonut();
+}
+// 카드사별 금액 + 도넛(비중). 분류별 비중과 같은 달 기준
+const CARD_COLORS = ['#3f7fbf', '#e0874f', '#4aa89b', '#c9566b', '#8a6cc4', '#d4b13f', '#6b8f4e', '#9a8f86'];
+function drawCardDonut() {
+  const sum = {};
+  txs.filter(t => t.date.startsWith(dashCatMonth)).forEach(t => { const k = t.card || '미지정'; sum[k] = (sum[k] || 0) + t.amount; });
+  const list = Object.entries(sum).filter(e => e[1] > 0).sort((a, b) => b[1] - a[1]);
+  const tot = list.reduce((a, e) => a + e[1], 0);
+  $('cardMonthLbl').textContent = dashCatMonth ? dashCatMonth.replace('-', '년 ') + '월' : '';
+  if (!list.length) { $('cardDonut').innerHTML = '<p class="muted">이 달의 거래 내역이 없어요.</p>'; return; }
+  const r = 40, C = 2 * Math.PI * r; let off = 0;
+  const segs = list.map(([, v], i) => { const len = v / tot * C, el = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="${CARD_COLORS[i % CARD_COLORS.length]}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`; off += len; return el; }).join('');
+  const svg = `<svg viewBox="0 0 120 120" class="donut" role="img" aria-label="카드사별 비중"><g transform="rotate(-90 60 60)">${segs}</g><text x="60" y="57" text-anchor="middle" font-size="9" fill="#7b8088">합계</text><text x="60" y="70" text-anchor="middle" font-size="12" font-weight="700" fill="#15171a">${mm(tot / 10000)}만</text></svg>`;
+  const rows = list.map(([c, v], i) => `<div class="cdr"><i style="background:${CARD_COLORS[i % CARD_COLORS.length]}"></i><span>${esc(c)}</span><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('');
+  $('cardDonut').innerHTML = `<div class="cdw">${svg}<div class="cdl">${rows}</div></div>`;
 }
 function trendSVG(labels, data) {
   const mob = window.matchMedia('(max-width:600px)').matches;
