@@ -445,6 +445,19 @@ td select { border-radius: 8px; background: #faf9f6; }
 .cdr span { flex: 0 0 auto; }
 .cdr b { margin-left: 6px; font-weight: 600; }
 .cdl { flex: 0 1 auto; }
+
+/* v3.2 대시보드·누적 표: 좌우 여백 축소 → 비고 확대, 잔액·변동 우측 정렬 */
+@media (max-width: 600px) {
+  #dash, #history { padding-left: 2px !important; padding-right: 2px !important; }
+  #dash > .panel, #history > .panel { padding-left: 2px !important; padding-right: 2px !important; }
+  #dash .dt td:nth-child(2), #dash .dt td:nth-child(3), #history .dt td:nth-child(2), #history .dt td:nth-child(3) { padding-left: 2px; padding-right: 3px; }
+}
+#dash .dt td.n, #history .dt td.n { text-align: right !important; }
+.cdl { display: grid; grid-template-columns: auto auto auto auto; column-gap: 8px; row-gap: 3px; align-items: center; }
+.cdr { display: contents !important; }
+.cdr span { text-align: right; }
+.cdr b { margin-left: 0 !important; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cdr em { font-style: normal; text-align: right; color: var(--mute); font-variant-numeric: tabular-nums; }
 </style>
 </head>
 <body>
@@ -1170,9 +1183,11 @@ function drawCardDonut() {
   $('cardMonthLbl').textContent = dashCatMonth ? dashCatMonth.replace('-', '년 ') + '월' : '';
   if (!list.length) { $('cardDonut').innerHTML = '<p class="muted">이 달의 거래 내역이 없어요.</p>'; return; }
   const r = 40, C = 2 * Math.PI * r; let off = 0;
-  const segs = list.map(([c, v], i) => { const len = v / tot * C, el = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="${cardColor(c, i)}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`; off += len; return el; }).join('');
-  const svg = `<svg viewBox="0 0 120 120" class="donut" role="img" aria-label="카드사별 비중"><g transform="rotate(-90 60 60)">${segs}</g><text x="60" y="57" text-anchor="middle" font-size="9" fill="#7b8088">합계</text><text x="60" y="70" text-anchor="middle" font-size="12" font-weight="700" fill="#15171a">${mm(tot / 10000)}만</text></svg>`;
-  const rows = list.map(([c, v], i) => `<div class="cdr"><i style="background:${cardColor(c, i)}"></i><span>${esc(c)}</span><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('');
+  const lite = (hex, a = .45) => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) + (255 - parseInt(hex.slice(k, k + 2), 16)) * a).toString(16).padStart(2, '0')).join('');
+  const defs = list.map(([c], i) => `<linearGradient id="cdg${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${lite(cardColor(c, i))}"/><stop offset="1" stop-color="${cardColor(c, i)}"/></linearGradient>`).join('');
+  const segs = list.map(([c, v], i) => { const len = v / tot * C, el = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="url(#cdg${i})" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`; off += len; return el; }).join('');
+  const svg = `<svg viewBox="0 0 120 120" class="donut" role="img" aria-label="카드사별 비중"><defs>${defs}</defs><g transform="rotate(-90 60 60)">${segs}</g><text x="60" y="57" text-anchor="middle" font-size="9" fill="#7b8088">합계</text><text x="60" y="70" text-anchor="middle" font-size="12" font-weight="700" fill="#15171a">${mm(tot / 10000)}만</text></svg>`;
+  const rows = list.map(([c, v], i) => `<div class="cdr"><i style="background:linear-gradient(90deg, ${lite(cardColor(c, i))}, ${cardColor(c, i)})"></i><span>${esc(c)}</span><b>${mm(v / 10000)}만</b><em>${Math.round(v / tot * 100)}%</em></div>`).join('');
   $('cardDonut').innerHTML = `<div class="cdw">${svg}<div class="cdl">${rows}</div></div>`;
 }
 function trendSVG(labels, data) {
