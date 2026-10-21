@@ -518,6 +518,14 @@ html { background: var(--bg) !important; }
   #bnav .bn.on::before { top: -6px !important; }
   body { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)) !important; }
 }
+
+/* v3.9 시작 위치 살짝 위로, 하단 메뉴 조금 더 높게 */
+@media (max-width: 600px) {
+  #app, #dash, #history, #catsView { margin-top: 20px !important; }
+  #bnav { padding: 8px 4px calc(14px + env(safe-area-inset-bottom, 0px)) !important; }
+  #bnav .bn.on::before { top: -8px !important; }
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important; }
+}
 </style>
 </head>
 <body>
