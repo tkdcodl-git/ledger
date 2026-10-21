@@ -427,6 +427,19 @@ td select { border-radius: 8px; background: #faf9f6; }
 .crow .grip { flex: 0 0 auto; width: 22px; text-align: center; color: var(--mute); font-size: 16px; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
 .crow.drag { z-index: 5; background: #fff; box-shadow: 0 6px 18px rgba(21,23,26,.18); }
 .dragging { user-select: none; -webkit-user-select: none; }
+
+/* v3.1 분류 선택창 */
+#rows td.category { cursor: pointer; }
+#rows td.category select { pointer-events: none; }
+#catPick { position: fixed; inset: 0; z-index: 70; background: rgba(21,23,26,.35); display: flex; align-items: flex-end; justify-content: center; }
+#catPick.hide { display: none; }
+.cpk { background: #fff; width: min(480px, 100%); border-radius: 10px 10px 0 0; padding: 10px 10px calc(12px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(21,23,26,.2); }
+.cph { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.cph b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cpg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.cpb { border: 1px solid var(--line); background: #faf9f6; border-radius: 6px; padding: 10px 4px; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; overflow-wrap: anywhere; }
+.cpb.on { background: var(--dark); color: #fff; border-color: var(--dark); }
+@media (min-width: 601px) { #catPick { align-items: center; } .cpk { border-radius: 10px; } }
 </style>
 </head>
 <body>
@@ -455,6 +468,7 @@ td select { border-radius: 8px; background: #faf9f6; }
   </div>
 </section>
 
+<div id="catPick" class="hide" role="dialog" aria-label="분류 선택"><div class="cpk"><div class="cph"><b id="cpTitle"></b><button class="x" data-cpclose aria-label="닫기">×</button></div><div class="cpg" id="cpGrid"></div></div></div>
 <div id="modal" class="modal hide"><div class="sheet" id="sheet"></div></div>
 <datalist id="inNames"><option>월급</option><option>이자</option></datalist>
 <datalist id="exNames"><option>현금지출</option><option>대출이자</option></datalist>
@@ -1412,7 +1426,23 @@ $('modal').oninput = e => {
   else if (d.f === 'cardMemo') led.cardMemo = e.target.value;
   else if (d.f) { const k = d.f.startsWith('in') ? 'income' : 'expense'; led[k][+d.i][d.f.endsWith('N') ? 'n' : 'v'] = e.target.value; autoBal(); }
 };
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); $('catPick').classList.add('hide'); } });
+// 분류 선택: 기본 콤보박스 대신 모든 분류가 한 번에 보이는 선택창 (스크롤 없음)
+let cpSel = null;
+$('rows').addEventListener('click', e => {
+  const td = e.target.closest('td.category'); if (!td) return;
+  const sel = td.querySelector('select[data-h]'); if (!sel) return;
+  e.preventDefault(); cpSel = sel;
+  const t = txs.find(x => x.hash === sel.dataset.h);
+  $('cpTitle').textContent = t ? t.merchant : '분류 선택';
+  $('cpGrid').innerHTML = [...sel.options].map(o => `<button class="cpb${o.selected ? ' on' : ''}" data-cpv="${esc(o.value)}">${esc(o.textContent)}</button>`).join('');
+  $('catPick').classList.remove('hide');
+});
+$('catPick').onclick = e => {
+  const v = e.target.dataset.cpv;
+  if (v != null && cpSel) { if (cpSel.value !== v) { cpSel.value = v; cpSel.dispatchEvent(new Event('change', { bubbles: true })); } }
+  if (v != null || e.target === $('catPick') || 'cpclose' in e.target.dataset) $('catPick').classList.add('hide');
+};
 $('catsView').onclick = e => {
   const d = e.target.dataset;
   if (e.target.id === 'addCat') { const v = $('newCat').value.trim(); if (!v) return; if (catRows.some(r => r.name === v)) return renderCats('이미 있는 분류예요.'); catRows.push({ orig: null, name: v }); return renderCats(); }
