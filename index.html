@@ -419,9 +419,11 @@ td select { border-radius: 8px; background: #faf9f6; }
 /* v3.0 그래프 범례를 제목 옆에 */
 .ttl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .ttl h2 { margin: 0 !important; }
-.ttl .lg { margin: 0 !important; }
+.ttl .lg { margin: 0 0 0 auto !important; justify-content: flex-end; }
 #catsView { max-width: 1180px; margin: 16px auto 0; padding: 0 20px; }
 @media (max-width: 600px) { #catsView { padding: 0 3px; margin-top: calc(10px + env(safe-area-inset-top, 0px)); } #catsBody .crow { margin: 4px 0; } #catsBody .crow input { padding: 5px 8px; } }
+.crow .mv { width: 26px; flex: 0 0 auto; font-size: 11px; color: var(--mute); }
+.crow .mv:disabled { opacity: .3; }
 </style>
 </head>
 <body>
@@ -1124,7 +1126,7 @@ function trendSVG(labels, data) {
   const halo = 'stroke="#fff" stroke-width="3" paint-order="stroke"';
   let g = '';
   for (let k = 0; k <= 4; k++) { const v = max * k / 4; g += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="#e3e9e6"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="#69766f">${Math.round(v)}</text>`; }
-  const bw = Math.min(30, step * 0.55);
+  const bw = Math.min(20, step * 0.36);
   const bars = data.map((d, i) => {
     if (d.bal == null) return '';
     const top = y(Math.max(d.bal, 0)), h = base - top;
@@ -1203,7 +1205,7 @@ function openCats() { catRows = CATS.map(c => ({ orig: c, name: c })); renderCat
 let catsInline = false;
 function renderCats(msg, ok) {
   const html = (`<h2>분류 설정</h2>
-    <div>${catRows.map((r, i) => `<div class="crow"><input lang="ko" data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
+    <div>${catRows.map((r, i) => `<div class="crow"><button class="x mv" data-cup="${i}" ${i === 0 ? 'disabled' : ''} aria-label="위로">▲</button><button class="x mv" data-cdn="${i}" ${i === catRows.length - 1 ? 'disabled' : ''} aria-label="아래로">▼</button><input lang="ko" data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
     <div class="crow"><input lang="ko" id="newCat" placeholder="새 분류 이름"><button class="btn" id="addCat">추가</button></div>
     <p class="muted">이름을 바꾸면 기존 거래도 함께 바뀌고, 삭제한 분류의 거래는 '기타'로 옮겨져요.</p>
     <p id="catMsg" class="${msg ? '' : 'hide'}" style="color:${ok ? 'var(--accent)' : 'var(--warn)'}">${esc(msg || '')}</p>
@@ -1349,6 +1351,7 @@ $('modal').onclick = e => {
   if ((e.target === $('modal') && downOnBackdrop) || 'close' in d) return closeModal();
   if (e.target === $('modal')) return;
   if (e.target.id === 'addCat') { const v = $('newCat').value.trim(); if (!v) return; if (catRows.some(r => r.name === v)) return renderCats('이미 있는 분류예요.'); catRows.push({ orig: null, name: v }); return renderCats(); }
+  if (d.cup || d.cdn) { const i = +(d.cup || d.cdn), j = d.cup ? i - 1 : i + 1; if (j < 0 || j >= catRows.length) return; [catRows[i], catRows[j]] = [catRows[j], catRows[i]]; return renderCats(); }
   if (d.cdel) { catRows.splice(+d.cdel, 1); return renderCats(); }
   if (e.target.id === 'catSave') return saveCats();
   if (d.ladd) { led[d.ladd === 'in' ? 'income' : 'expense'].push({ n: '', v: '' }); return renderLedger(); }
@@ -1373,6 +1376,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 $('catsView').onclick = e => {
   const d = e.target.dataset;
   if (e.target.id === 'addCat') { const v = $('newCat').value.trim(); if (!v) return; if (catRows.some(r => r.name === v)) return renderCats('이미 있는 분류예요.'); catRows.push({ orig: null, name: v }); return renderCats(); }
+  if (d.cup || d.cdn) { const i = +(d.cup || d.cdn), j = d.cup ? i - 1 : i + 1; if (j < 0 || j >= catRows.length) return; [catRows[i], catRows[j]] = [catRows[j], catRows[i]]; return renderCats(); }
   if (d.cdel) { catRows.splice(+d.cdel, 1); return renderCats(); }
   if (e.target.id === 'catSave') return saveCats();
 };
