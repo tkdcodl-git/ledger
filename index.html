@@ -1099,6 +1099,9 @@ function drawDash() {
 }
 // 카드사별 금액 + 도넛(비중). 분류별 비중과 같은 달 기준
 const CARD_COLORS = ['#52b5ad', '#ee8450', '#e0687a', '#47a3de', '#f5b95e', '#2c8f87', '#c4465a', '#9fd3cf']; // 수입/지출 그래프 + 분류별 비중 색
+// 카드사 고유 색: 신한 파랑, 하나 초록, 현대 진한 회색, 미지정 주황. 그 외는 기본 색 순서
+const CARD_FIXED = { '신한': '#2f6fd6', '하나': '#1f9d6b', '현대': '#3d4249', '미지정': '#ee8450' };
+const cardColor = (c, i) => CARD_FIXED[c] || CARD_COLORS.filter(x => !Object.values(CARD_FIXED).includes(x))[i % 6] || CARD_COLORS[i % CARD_COLORS.length];
 function drawCardDonut() {
   const sum = {};
   txs.filter(t => t.date.startsWith(dashCatMonth)).forEach(t => { const k = t.card || '미지정'; sum[k] = (sum[k] || 0) + t.amount; });
@@ -1107,9 +1110,9 @@ function drawCardDonut() {
   $('cardMonthLbl').textContent = dashCatMonth ? dashCatMonth.replace('-', '년 ') + '월' : '';
   if (!list.length) { $('cardDonut').innerHTML = '<p class="muted">이 달의 거래 내역이 없어요.</p>'; return; }
   const r = 40, C = 2 * Math.PI * r; let off = 0;
-  const segs = list.map(([, v], i) => { const len = v / tot * C, el = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="${CARD_COLORS[i % CARD_COLORS.length]}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`; off += len; return el; }).join('');
+  const segs = list.map(([c, v], i) => { const len = v / tot * C, el = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="${cardColor(c, i)}" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`; off += len; return el; }).join('');
   const svg = `<svg viewBox="0 0 120 120" class="donut" role="img" aria-label="카드사별 비중"><g transform="rotate(-90 60 60)">${segs}</g><text x="60" y="57" text-anchor="middle" font-size="9" fill="#7b8088">합계</text><text x="60" y="70" text-anchor="middle" font-size="12" font-weight="700" fill="#15171a">${mm(tot / 10000)}만</text></svg>`;
-  const rows = list.map(([c, v], i) => `<div class="cdr"><i style="background:${CARD_COLORS[i % CARD_COLORS.length]}"></i><span>${esc(c)}</span><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('');
+  const rows = list.map(([c, v], i) => `<div class="cdr"><i style="background:${cardColor(c, i)}"></i><span>${esc(c)}</span><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('');
   $('cardDonut').innerHTML = `<div class="cdw">${svg}<div class="cdl">${rows}</div></div>`;
 }
 function trendSVG(labels, data) {
