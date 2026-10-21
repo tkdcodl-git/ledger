@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" content="#f4f3ef">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>가계부</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -374,9 +375,50 @@ td select { border-radius: 8px; background: #faf9f6; }
   body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 60; pointer-events: none; }
   #app, #dash, #history { margin-top: calc(14px + env(safe-area-inset-top, 0px)) !important; }
 }
+
+/* v2.9 모바일: 상단 흐림 제거, 분류 설정 전체 화면, 전체 크기 축소 */
+#topCover { display: none; }
+@media (max-width: 600px) {
+  html { background: var(--bg) !important; }
+  body::before { display: none !important; }
+  #topCover { display: block; position: fixed; top: 0; left: 0; right: 0; height: calc(env(safe-area-inset-top, 0px) + 8px); background: var(--bg); z-index: 60; pointer-events: none; }
+  #app, #dash, #history { margin-top: calc(10px + env(safe-area-inset-top, 0px)) !important; }
+
+  /* 분류 설정: 팝업 대신 전체 화면 (하단 메뉴는 그대로 보임) */
+  #modal.full { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; padding: 0; align-items: stretch; justify-content: stretch; top: 0; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); }
+  #modal.full .sheet { width: 100%; max-width: none; max-height: none; height: 100%; border-radius: 0; box-shadow: none; background: var(--bg); padding: calc(14px + env(safe-area-inset-top, 0px)) 12px 14px; overflow: auto; }
+  #modal.full .sheet h2 { font-size: 14px; }
+  #modal.full .crow { margin: 4px 0; }
+  #modal.full .crow input { padding: 5px 8px; }
+  #bnav .bn.cur { color: var(--ink); }
+  #bnav .bn.cur ~ .bn.on, #bnav:has(.bn.cur) .bn.on { color: var(--mute); }
+  #bnav:has(.bn.cur) .bn.on::before { display: none; }
+  #bnav .bn.cur::before { content: ""; position: absolute; top: -3px; left: 32%; right: 32%; height: 2px; border-radius: 2px; background: var(--ink); }
+
+  /* 전체 크기 축소 */
+  body { font-size: 12px; }
+  h2, #dash h2, #history h2 { font-size: 12px; margin-bottom: 5px; }
+  .btn { font-size: 11px; padding: 4px 9px; }
+  .panel, #dash .panel { padding: 8px; }
+  #dash .hb { gap: 5px; font-size: 10px; margin: 4px 0; }
+  #dash .hb span { width: 62px; font-size: 10px; }
+  #dash .hb b { width: 80px; font-size: 9.5px; }
+  #dash .track { height: 8px; }
+  #dash #catMonth { padding: 2px 6px; font-size: 10px; }
+  #dash .lg { font-size: 9px; margin-bottom: 0; }
+  .cdw .donut { width: 84px !important; height: 84px !important; }
+  .cdr { font-size: 10px !important; padding: 1px 0; }
+  .total { font-size: 18px; }
+  .cat { font-size: 11px; }
+  #drop { padding: 14px; font-size: 12px; }
+  #status { font-size: 12px; }
+  .sheet { padding: 14px; }
+  .fl { margin: 8px 0; font-size: 12px; }
+}
 </style>
 </head>
 <body>
+<div id="topCover" aria-hidden="true"></div>
 <nav id="tabs"><div class="seg"><button class="tab" data-t="dash">대시보드</button><button class="tab on" data-t="tx">거래 내역</button><button class="tab" data-t="history">전체 누적</button></div><span class="sp"></span><button class="btn" id="catBtn">분류 설정</button></nav>
 <nav id="bnav" aria-label="메뉴">
   <button class="bn" data-t="dash"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>대시보드</span></button>
@@ -1062,7 +1104,7 @@ function drawCardDonut() {
 }
 function trendSVG(labels, data) {
   const mob = window.matchMedia('(max-width:600px)').matches;
-  const W = mob ? 340 : 560, H = mob ? 160 : 210, pl = 38, pr = 10, pt = 22, pb = 15;
+  const W = mob ? 400 : 560, H = mob ? 165 : 210, pl = 38, pr = 10, pt = 22, pb = 15;
   const all = data.flatMap(d => [d.bal, d.inc, d.exp]).filter(v => v != null);
   const max = Math.max(10, ...all) * 1.12, n = labels.length, step = (W - pl - pr) / n;
   const cx = i => pl + step * (i + 0.5), y = v => pt + (H - pt - pb) * (1 - v / max), base = y(0);
@@ -1136,8 +1178,12 @@ function saveManualTx() {
   setStatus('직접 입력한 거래가 추가됐어요. 저장 버튼을 눌러 데이터베이스에 저장하세요.');
 }
 // ----- 모달 공통 -----
-const openModal = html => { $('sheet').innerHTML = html; $('modal').classList.remove('hide'); };
-const closeModal = () => $('modal').classList.add('hide');
+const openModal = (html, full) => {
+  $('sheet').innerHTML = html; $('modal').classList.toggle('full', !!full); $('modal').classList.remove('hide');
+  document.querySelectorAll('#bnav .bn').forEach(b => b.classList.toggle('cur', !!full && !!b.dataset.set));
+  if (full) $('sheet').scrollTop = 0;
+};
+const closeModal = () => { $('modal').classList.add('hide'); $('modal').classList.remove('full'); document.querySelectorAll('#bnav .bn').forEach(b => b.classList.remove('cur')); };
 
 // ----- 분류 설정 -----
 function openCats() { catRows = CATS.map(c => ({ orig: c, name: c })); renderCats(); }
@@ -1147,7 +1193,7 @@ function renderCats(msg) {
     <div class="crow"><input lang="ko" id="newCat" placeholder="새 분류 이름"><button class="btn" id="addCat">추가</button></div>
     <p class="muted">이름을 바꾸면 기존 거래도 함께 바뀌고, 삭제한 분류의 거래는 '기타'로 옮겨져요.</p>
     <p id="catMsg" class="${msg ? '' : 'hide'}" style="color:var(--warn)">${esc(msg || '')}</p>
-    <div class="bar"><span class="sp"></span><button class="btn" data-close>닫기</button><button class="btn primary" id="catSave">저장</button></div>`);
+    <div class="bar"><span class="sp"></span><button class="btn" data-close>닫기</button><button class="btn primary" id="catSave">저장</button></div>`, window.matchMedia('(max-width:600px)').matches);
 }
 async function saveCats() {
   const names = catRows.map(r => r.name.trim());
