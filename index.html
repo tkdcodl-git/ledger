@@ -422,8 +422,11 @@ td select { border-radius: 8px; background: #faf9f6; }
 .ttl .lg { margin: 0 0 0 auto !important; justify-content: flex-end; }
 #catsView { max-width: 1180px; margin: 16px auto 0; padding: 0 20px; }
 @media (max-width: 600px) { #catsView { padding: 0 3px; margin-top: calc(10px + env(safe-area-inset-top, 0px)); } #catsBody .crow { margin: 4px 0; } #catsBody .crow input { padding: 5px 8px; } }
-.crow .mv { width: 26px; flex: 0 0 auto; font-size: 11px; color: var(--mute); }
-.crow .mv:disabled { opacity: .3; }
+.crow[data-row] { position: relative; border-radius: 6px; -webkit-touch-callout: none; transition: box-shadow .15s; }
+.crow[data-row] input { -webkit-touch-callout: none; }
+.crow .grip { flex: 0 0 auto; width: 22px; text-align: center; color: var(--mute); font-size: 16px; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+.crow.drag { z-index: 5; background: #fff; box-shadow: 0 6px 18px rgba(21,23,26,.18); }
+.dragging { user-select: none; -webkit-user-select: none; }
 </style>
 </head>
 <body>
@@ -672,6 +675,41 @@ function localParseRows(rows) {
     out.push({ date, merchant, amount });
   }
   return out.length && out.length / (out.length + badN) >= 0.9 ? out : null;
+}
+// 분류 순서: 길게 눌러(약 0.35초) 위아래로 끌어서 변경
+function catDrag(box) {
+  const rows = [...box.querySelectorAll('.crow[data-row]')];
+  rows.forEach(row => {
+    let timer = null, on = false, sy = 0, sx = 0, y0 = 0;
+    const start = (x, y, target) => {
+      if (target.closest('button') || (target.matches('input') && target === document.activeElement)) return;
+      sx = x; sy = y; clearTimeout(timer);
+      timer = setTimeout(() => { on = true; y0 = y; if (document.activeElement) document.activeElement.blur(); row.classList.add('drag'); box.classList.add('dragging'); navigator.vibrate && navigator.vibrate(15); }, 350);
+    };
+    const move = (x, y, e) => {
+      if (!on) { if (Math.abs(y - sy) > 8 || Math.abs(x - sx) > 8) clearTimeout(timer); return; }
+      e.preventDefault();
+      row.style.transform = `translateY(${y - y0}px)`;
+      const sibs = [...box.querySelectorAll('.crow[data-row]')].filter(r => r !== row);
+      const next = sibs.find(r => { const b = r.getBoundingClientRect(); return y < b.top + b.height / 2; });
+      const before = row.getBoundingClientRect().top;
+      if (next) { if (next !== row.nextElementSibling) next.before(row); } else if (sibs.length && sibs[sibs.length - 1].nextElementSibling !== row) sibs[sibs.length - 1].after(row);
+      y0 += row.getBoundingClientRect().top - before; // 자리가 바뀐 만큼 보정해서 손가락 아래에 유지
+      row.style.transform = `translateY(${y - y0}px)`;
+    };
+    const end = () => {
+      clearTimeout(timer); if (!on) return; on = false;
+      const order = [...box.querySelectorAll('.crow[data-row]')].map(r => catRows[+r.dataset.row]);
+      catRows = order; renderCats();
+    };
+    row.addEventListener('touchstart', e => start(e.touches[0].clientX, e.touches[0].clientY, e.target), { passive: true });
+    row.addEventListener('touchmove', e => move(e.touches[0].clientX, e.touches[0].clientY, e), { passive: false });
+    row.addEventListener('touchend', end); row.addEventListener('touchcancel', end);
+    row.addEventListener('mousedown', e => { start(e.clientX, e.clientY, e.target);
+      const mm = ev => move(ev.clientX, ev.clientY, ev), mu = () => { end(); removeEventListener('mousemove', mm); removeEventListener('mouseup', mu); };
+      addEventListener('mousemove', mm); addEventListener('mouseup', mu); });
+    row.addEventListener('contextmenu', e => { if (on) e.preventDefault(); });
+  });
 }
 // 매월 고정 내역은 항상 같은 분류로 (예: 'XX월 SK북한산시 0133동2202호 - 관리비')
 const FIXED_CATS = [[/SK북한산시.*관리비/, '관리비']];
@@ -1102,8 +1140,9 @@ function drawDash() {
 // 카드사별 금액 + 도넛(비중). 분류별 비중과 같은 달 기준
 const CARD_COLORS = ['#52b5ad', '#ee8450', '#e0687a', '#47a3de', '#f5b95e', '#2c8f87', '#c4465a', '#9fd3cf']; // 수입/지출 그래프 + 분류별 비중 색
 // 카드사 고유 색: 신한 파랑, 하나 초록, 현대 진한 회색, 미지정 주황. 그 외는 기본 색 순서
-const CARD_FIXED = { '신한': '#2f6fd6', '하나': '#1f9d6b', '현대': '#3d4249', '미지정': '#ee8450' };
-const cardColor = (c, i) => CARD_FIXED[c] || CARD_COLORS.filter(x => !Object.values(CARD_FIXED).includes(x))[i % 6] || CARD_COLORS[i % CARD_COLORS.length];
+const CARD_FIXED = { '신한': '#47a3de', '하나': '#52b5ad', '현대': '#6b7078', '미지정': '#ee8450' }; // 그래프 색: 잔액 파랑·수입 초록, 분류별 비중 주황
+const CARD_EXTRA = ['#e0687a', '#5ab9aa', '#f5b95e', '#c4465a']; // 그 외 카드사: 지출 분홍 등 그래프 색
+const cardColor = (c, i) => CARD_FIXED[c] || CARD_EXTRA[i % CARD_EXTRA.length];
 function drawCardDonut() {
   const sum = {};
   txs.filter(t => t.date.startsWith(dashCatMonth)).forEach(t => { const k = t.card || '미지정'; sum[k] = (sum[k] || 0) + t.amount; });
@@ -1205,12 +1244,13 @@ function openCats() { catRows = CATS.map(c => ({ orig: c, name: c })); renderCat
 let catsInline = false;
 function renderCats(msg, ok) {
   const html = (`<h2>분류 설정</h2>
-    <div>${catRows.map((r, i) => `<div class="crow"><button class="x mv" data-cup="${i}" ${i === 0 ? 'disabled' : ''} aria-label="위로">▲</button><button class="x mv" data-cdn="${i}" ${i === catRows.length - 1 ? 'disabled' : ''} aria-label="아래로">▼</button><input lang="ko" data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
+    <div>${catRows.map((r, i) => `<div class="crow" data-row="${i}"><span class="grip" aria-hidden="true">≡</span><input lang="ko" data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
     <div class="crow"><input lang="ko" id="newCat" placeholder="새 분류 이름"><button class="btn" id="addCat">추가</button></div>
-    <p class="muted">이름을 바꾸면 기존 거래도 함께 바뀌고, 삭제한 분류의 거래는 '기타'로 옮겨져요.</p>
+    <p class="muted">≡ 부분이나 분류를 길게 누른 채 위아래로 끌면 순서를 바꿀 수 있어요. 이름을 바꾸면 기존 거래도 함께 바뀌고, 삭제한 분류의 거래는 '기타'로 옮겨져요.</p>
     <p id="catMsg" class="${msg ? '' : 'hide'}" style="color:${ok ? 'var(--accent)' : 'var(--warn)'}">${esc(msg || '')}</p>
     <div class="bar"><span class="sp"></span>${catsInline ? '' : '<button class="btn" data-close>닫기</button>'}<button class="btn primary" id="catSave">저장</button></div>`);
   if (catsInline) $('catsBody').innerHTML = html; else openModal(html);
+  catDrag(catsInline ? $('catsBody') : $('sheet'));
 }
 async function saveCats() {
   const names = catRows.map(r => r.name.trim());
