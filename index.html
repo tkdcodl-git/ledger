@@ -458,6 +458,16 @@ td select { border-radius: 8px; background: #faf9f6; }
 .cdr span { text-align: right; }
 .cdr b { margin-left: 0 !important; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .cdr em { font-style: normal; text-align: right; color: var(--mute); font-variant-numeric: tabular-nums; }
+
+/* v3.3 카드사 목록 우측 끝, 수입/지출 칸 좁혀 비고 확대 */
+.cdl { margin-left: auto; }
+@media (max-width: 600px) {
+  #dash .dt th:nth-child(4), #dash .dt td:nth-child(4), #history .dt th:nth-child(4), #history .dt td:nth-child(4),
+  #dash .dt th:nth-child(5), #dash .dt td:nth-child(5), #history .dt th:nth-child(5), #history .dt td:nth-child(5) { width: 68px; }
+  #dash .dt .ln, #history .dt .ln { gap: 2px; }
+  #dash .dt .il, #history .dt .il { padding-left: 3px; padding-right: 3px; }
+  #dash .dt .is, #history .dt .is { padding-left: 3px; padding-right: 3px; }
+}
 </style>
 </head>
 <body>
