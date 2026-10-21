@@ -164,6 +164,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #app .tbl table:not(.dt) td.category select {
     width: 100%; min-width: 0; max-width: 100%; padding: 3px 1px; font-size: 10px;
   }
+  #app .tbl table:not(.dt) th.cardhead, #app .tbl table:not(.dt) td.cardcell { width: 46px; }
+  #app .tbl table:not(.dt) td.cardcell select { width: 100%; min-width: 0; max-width: 100%; padding: 3px 1px; font-size: 10px; }
   #app .tbl table:not(.dt) .x { padding: 0; width: 18px; font-size: 15px; line-height: 1.2; }
 
   /* Dashboard monthly table: compact spreadsheet-like layout, mobile only */
@@ -197,6 +199,8 @@ label.chk{display:flex;gap:6px;align-items:center;font-size:13.5px;color:var(--m
   #app .tbl table:not(.dt) th:nth-child(4), #app .tbl table:not(.dt) td.amount { width: 58px; white-space: nowrap; }
   #app .tbl table:not(.dt) th.delhead, #app .tbl table:not(.dt) td.deletecell { width: 17px; padding: 0; text-align: center; }
   #app .tbl table:not(.dt) td.category select { width: 100%; max-width: 100%; min-width: 0; padding: 2px 0; font-size: 9px; }
+  #app .tbl table:not(.dt) th.cardhead, #app .tbl table:not(.dt) td.cardcell { width: 40px; padding-left: 1px; padding-right: 1px; }
+  #app .tbl table:not(.dt) td.cardcell select { width: 100%; max-width: 100%; min-width: 0; padding: 2px 0; font-size: 9px; }
   #app .tbl table:not(.dt) .x { width: 16px; padding: 0; font-size: 14px; }
   #dash, #history { margin: 8px auto 0; padding: 0 6px; }
   #dash .panel, #history .panel { padding: 8px; margin-bottom: 7px; border-radius: 8px; }
@@ -378,7 +382,7 @@ td select { border-radius: 8px; background: #faf9f6; }
         <button class="btn primary" id="save" disabled>저장</button>
       </div>
       <div class="tbl"><table>
-        <thead><tr><th>날짜</th><th>가맹점</th><th>분류</th><th class="n">금액</th><th class="delhead"></th></tr></thead>
+        <thead><tr><th>날짜</th><th>가맹점</th><th>분류</th><th class="n">금액</th><th class="cardhead">카드사</th><th class="delhead"></th></tr></thead>
         <tbody id="rows"></tbody>
       </table></div>
       <p id="empty" class="muted">아직 내역이 없어요. 위에서 카드내역을 올려보세요.</p>
@@ -388,6 +392,7 @@ td select { border-radius: 8px; background: #faf9f6; }
     <div class="panel">
       <div class="muted">카드값 합계</div>
       <div class="total" id="total">0만원</div>
+      <div id="cardSum" style="margin-top:8px"></div>
       <div id="cats" style="margin-top:10px"></div>
     </div>
   </aside>
@@ -436,7 +441,7 @@ async function loadAll() {
     memoTpl = mt && mt.value ? (mt.value.text || '') : '';
   }
   if (t.error) return setStatus('불러오기 실패: ' + t.error.message, true);
-  txs = t.data.map(x => ({ hash: x.hash, date: x.tx_date, merchant: x.merchant, amount: x.amount, category: x.category, saved: true }));
+  txs = t.data.map(x => ({ hash: x.hash, date: x.tx_date, merchant: x.merchant, amount: x.amount, category: x.category, card: x.card || '', saved: true }));
   rules = (r.data || []);
   refresh();
 }
@@ -450,10 +455,16 @@ function ruleFor(m) {
   return best && best[0];
 }
 async function save() {
-  const rows = txs.filter(t => !t.saved).map(t => ({ hash: t.hash, tx_date: t.date, merchant: t.merchant, amount: t.amount, category: t.category }));
+  let rows = txs.filter(t => !t.saved).map(t => ({ hash: t.hash, tx_date: t.date, merchant: t.merchant, amount: t.amount, category: t.category, card: t.card || null }));
   const rl = rules.filter(r => rulesDirty.has(r.keyword));
   let err;
-  if (rows.length) err = (await sb.from('transactions').upsert(rows, { onConflict: 'hash' })).error;
+  if (rows.length) {
+    err = (await sb.from('transactions').upsert(rows, { onConflict: 'hash' })).error;
+    if (err && /card/i.test(err.message || '')) { // DB에 card 열이 아직 없으면 카드사 없이 저장
+      rows = rows.map(({ card, ...r }) => r); cardColMissing = true;
+      err = (await sb.from('transactions').upsert(rows, { onConflict: 'hash' })).error;
+    }
+  }
   if (!err && rl.length) err = (await sb.from('rules').upsert(rl, { onConflict: 'keyword' })).error;
   if (!err && removed.size) err = (await sb.from('transactions').delete().in('hash', [...removed])).error;
   if (err) return setStatus('저장 실패: ' + err.message, true);
@@ -567,6 +578,17 @@ function localParseRows(rows) {
   }
   return out.length && out.length / (out.length + badN) >= 0.9 ? out : null;
 }
+// 카드사: 파일 이름이나 AI가 읽은 이름으로 추정, 표에서 직접 바꿀 수 있음
+const CARD_LIST = ['신한', '삼성', '현대', 'KB국민', '롯데', '하나', '우리', 'BC', 'NH농협', 'IBK기업', '카카오뱅크', '토스', '씨티'];
+let cardColMissing = false;
+function cardOf(text) {
+  const t = String(text || '').replace(/\s/g, '').toLowerCase();
+  if (!t) return '';
+  const keys = [['신한', /신한|shinhan/], ['삼성', /삼성|samsung/], ['현대', /현대|hyundai/], ['KB국민', /국민|kb/], ['롯데', /롯데|lotte/], ['하나', /하나|hana|외환/], ['우리', /우리|woori/], ['BC', /비씨|bc카드|^bc|bccard/], ['NH농협', /농협|nh/], ['IBK기업', /기업|ibk/], ['카카오뱅크', /카카오|kakao/], ['토스', /토스|toss/], ['씨티', /씨티|citi/]];
+  const k = keys.find(([, re]) => re.test(t));
+  return k ? k[0] : '';
+}
+const cardOpts = cur => ['', ...new Set([...CARD_LIST, ...txs.map(t => t.card).filter(Boolean), cur].filter(Boolean))].map(c => `<option value="${esc(c)}"${c === (cur || '') ? ' selected' : ''}>${c ? esc(c) : '-'}</option>`).join('');
 // 키워드 → 분류 (앞쪽이 우선). 내 분류에 없는 이름이면 '기타'. 직접 바꾼 규칙/과거 내역이 항상 먼저 적용돼요.
 const KEYWORDS = [
   ['통신/구독', /넷플릭스|유튜브|멜론|스포티파이|와우|구독|스카이라이프|통신|SKT|KT(?!X)|LG ?U\+|티빙|웨이브|디즈니/i],
@@ -783,11 +805,11 @@ async function handle(files) {
     // 엑셀/CSV는 먼저 AI 없이 직접 읽음 (열을 못 찾으면 AI로)
     const localRows = [], aiFiles = [], unreadable = [], notes = [];
     for (const f of files) {
-      if (isCsv(f) || isXls(f)) { const r = await localRowsOf(f); if (r) { localRows.push(...r); notes.push(`${f.name} → ${r.fmt || '표 형식'} ${r.length}건 ${won(r.reduce((a, t) => a + t.amount, 0))}원`); } else unreadable.push(f.name); }
+      if (isCsv(f) || isXls(f)) { const r = await localRowsOf(f); if (r) { const cd = cardOf(f.name); r.forEach(t => { if (!t.card) t.card = cd; }); localRows.push(...r); notes.push(`${f.name} → ${r.fmt || '표 형식'} ${r.length}건 ${won(r.reduce((a, t) => a + t.amount, 0))}원`); } else unreadable.push(f.name); }
       else aiFiles.push(f);
     }
     let chunks = [];
-    for (const f of aiFiles) chunks.push(...await toChunks(f));
+    for (const f of aiFiles) { const cd = cardOf(f.name); chunks.push(...(await toChunks(f)).map(c => Object.assign(c, { card: cd }))); }
     setStatus('');
     aiCalls = 0;
     progStart(chunks.length || 1, localRows.length ? `엑셀/CSV ${localRows.length}건을 AI 없이 읽었어요` : 'AI가 내역을 읽는 중');
@@ -804,7 +826,7 @@ async function handle(files) {
         const hash = base + '|' + seen[base];
         if (existing.has(hash)) continue;
         existing.add(hash);
-        txs.push({ hash, date: t.date, merchant: t.merchant, amount: t.amount, category: ruleFor(t.merchant) || (CATS.includes(t.category) ? t.category : '기타'), saved: false, fresh: true });
+        txs.push({ hash, date: t.date, merchant: t.merchant, amount: t.amount, category: ruleFor(t.merchant) || (CATS.includes(t.category) ? t.category : '기타'), card: cardOf(t.card) || t.card || '', saved: false, fresh: true });
         added++;
       }
     };
@@ -821,7 +843,7 @@ async function handle(files) {
       if (!okChunks && fails.length >= 4) { aborted = '연속으로 실패해서 중단했어요. 아래 원인을 확인하세요.'; break; } // 계속 실패하면 오래 붙잡지 않음
       const batch = chunks.slice(i, i + 1);
       prog.inflight = batch.length; prog.start = Date.now();
-      const part = await Promise.all(batch.map(c => analyzeSplit(c).then(r => { okChunks++; return r; }, e => { fails.push(e.message); return []; }).then(r => { prog.done++; aiDone++; prog.inflight--; return r; })));
+      const part = await Promise.all(batch.map(c => analyzeSplit(c).then(r => { okChunks++; return r.map(t => ({ ...t, card: c.card || t.card || '' })); }, e => { fails.push(e.message); return []; }).then(r => { prog.done++; aiDone++; prog.inflight--; return r; })));
       part.forEach(addRows);
       if (added) refresh();
     }
@@ -854,11 +876,16 @@ function draw() {
     <td class="txdate">${esc(t.date.slice(5).replace('-', '/'))}</td><td class="merchant">${esc(t.merchant)}</td>
      <td class="category"><select data-h="${esc(t.hash)}">${(CATS.includes(t.category) ? CATS : [...CATS, t.category]).map(c => `<option${c === t.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></td>
      <td class="n amount ${t.amount < 0 ? 'neg' : ''}">${won(t.amount)}</td>
+     <td class="cardcell"><select data-card="${esc(t.hash)}" aria-label="카드사">${cardOpts(t.card)}</select></td>
      <td class="deletecell"><button class="x" data-d="${esc(t.hash)}" aria-label="삭제">×</button></td></tr>`).join('');
   $('save').disabled = !(txs.some(t => !t.saved) || removed.size || rulesDirty.size);
   const sum = {}; let total = 0;
   all.forEach(t => { sum[t.category] = (sum[t.category] || 0) + t.amount; total += t.amount; });
   $('total').textContent = man(total) + '만원';
+  const bc = {}; all.forEach(t => { const k = t.card || '미지정'; bc[k] = (bc[k] || 0) + t.amount; });
+  const bce = Object.entries(bc).sort((a, b) => b[1] - a[1]);
+  $('cardSum').innerHTML = bce.length && !(bce.length === 1 && bce[0][0] === '미지정') ? bce.map(([c, v]) => `<div class="ln"><span>${esc(c)}</span><b>${man(v)}만원</b></div>`).join('') : '';
+  if (cardColMissing) $('cardSum').innerHTML += '<p class="muted">카드사는 DB에 card 열을 추가해야 저장돼요.</p>';
   const entries = Object.entries(sum).sort((a, b) => b[1] - a[1]), max = Math.max(1, ...entries.map(e => Math.abs(e[1])));
   $('cats').innerHTML = entries.map(([c, v]) => `<div class="cat"><span>${esc(c)}</span><i style="width:${Math.max(2, Math.abs(v) / max * 90)}px"></i><span class="v">${man(v)}</span></div>`).join('');
   $('empty').textContent = txs.length ? '이 조건에 맞는 내역이 없어요.' : '아직 내역이 없어요. 위에서 카드내역을 올려보세요.';
@@ -866,6 +893,8 @@ function draw() {
 }
 $('month').onchange = draw; $('catFilter').onchange = draw; $('mSearch').oninput = draw;
 $('rows').onchange = e => {
+  const hc = e.target.dataset.card;
+  if (hc) { const t = txs.find(x => x.hash === hc); t.card = e.target.value; t.saved = false; t.fresh = false; return draw(); }
   const h = e.target.dataset.h; if (!h) return;
   const t = txs.find(x => x.hash === h); t.category = e.target.value; t.saved = false; t.fresh = false;
   // 직접 바꾼 분류는 항상 기억해서 앞으로 올리는 같은 가맹점에도 적용 (저장 필요)
@@ -903,8 +932,17 @@ const sumLn = (label, v) => `<div class="ln sum"><span>${label}</span><b>${mm(v)
 
 // 카드값 비고 자동 문구 (전월 카드내역). 고정 2줄을 먼저, 나머지(5만원 이상, 기타 제외)는 아이폰 화면 폭에 맞춰 줄바꿈
 const MEMO_FIXED = [['관리비', '주유/교통', '점심'], ['백화점/외식', '마트/반찬']];
-const MEMO_W = 44; // 한 줄 폭(한글 2, 숫자·기호 1)
-const memoW = t => [...t].reduce((a, ch) => a + (/[\u1100-\uffff]/.test(ch) ? 2 : 1), 0);
+// 한 줄 폭: 실제 글꼴로 글자 폭을 재서, 아이폰에서 한 줄에 들어가는 기준 문장 길이까지 채움
+const MEMO_REF = ['- 치과(18) 치과할부(16.3) 병원/약국(12.1)', '- 보험료(8) 울산계비(10) 교통비(6) 점심(5)'];
+let memoCtx = null;
+const memoW = t => {
+  try {
+    if (!memoCtx) { memoCtx = document.createElement('canvas').getContext('2d'); memoCtx.font = '100px ' + getComputedStyle(document.body).fontFamily; }
+    return memoCtx.measureText(t).width;
+  } catch (e) { return [...t].reduce((a, ch) => a + (/[\u1100-\uffff]/.test(ch) ? 1.7 : 1), 0); }
+};
+let MEMO_WMAX = null;
+const MEMO_LIMIT = () => MEMO_WMAX || (MEMO_WMAX = Math.max(...MEMO_REF.map(memoW)) * 1.03);
 function cardMemoAuto(m) {
   const c = cardByMonth()[monthAdd(m, -1)];
   if (!c) return '';
@@ -913,7 +951,7 @@ function cardMemoAuto(m) {
   const fixed = new Set(MEMO_FIXED.flat());
   const rest = Object.keys(cats).filter(n => n !== '기타' && !fixed.has(n) && cats[n] / 10000 >= 5).sort((a, b) => cats[b] - cats[a]).map(item);
   let cur = '';
-  rest.forEach(t => { const nx = cur ? cur + ' ' + t : '- ' + t; if (cur && memoW(nx) > MEMO_W) { lines.push(cur); cur = '- ' + t; } else cur = nx; });
+  rest.forEach(t => { const nx = cur ? cur + ' ' + t : '- ' + t; if (cur && memoW(nx) > MEMO_LIMIT()) { lines.push(cur); cur = '- ' + t; } else cur = nx; });
   if (cur) lines.push(cur);
   return '■ 카드값 (5만 이상)\n' + lines.join('\n');
 }
@@ -1002,7 +1040,7 @@ let manualTx = null;
 function openManualTx() {
   const today = new Date();
   const d = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  manualTx = { date: d, merchant: '', amount: '', category: CATS[0] || '기타' };
+  manualTx = { date: d, merchant: '', amount: '', category: CATS[0] || '기타', card: '' };
   renderManualTx();
 }
 function renderManualTx(msg = '') {
@@ -1011,6 +1049,7 @@ function renderManualTx(msg = '') {
     <label class="fl">가맹점 / 내용<input id="mtMerchant" lang="ko" value="${esc(manualTx.merchant)}" placeholder="예: 동네 마트" required></label>
     <label class="fl">금액(원)<input id="mtAmount" inputmode="decimal" value="${esc(manualTx.amount)}" placeholder="예: 12500" required></label>
     <label class="fl">분류<select id="mtCategory">${CATS.map(c => `<option${c === manualTx.category ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></label>
+    <label class="fl">카드사<select id="mtCard">${cardOpts(manualTx.card)}</select></label>
     <p class="muted">금액은 지출이면 양수로 입력하세요. 입력 후 저장 버튼을 눌러야 거래 내역에 반영됩니다.</p>
     <p class="${msg ? '' : 'hide'}" style="color:var(--warn)">${esc(msg)}</p>
     <div class="bar"><span class="sp"></span><button class="btn" data-close>취소</button><button class="btn primary" id="manualSave">추가</button></div>`);
@@ -1020,10 +1059,11 @@ function saveManualTx() {
   manualTx.merchant = $('mtMerchant').value.trim();
   manualTx.amount = $('mtAmount').value.trim();
   manualTx.category = $('mtCategory').value;
+  manualTx.card = $('mtCard').value;
   const amount = num(manualTx.amount);
   if (!manualTx.date || !manualTx.merchant || !manualTx.amount || !Number.isFinite(amount) || amount <= 0) return renderManualTx('날짜, 가맹점, 0보다 큰 금액을 입력하세요.');
   const hash = `manual-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-  txs.push({ hash, date: manualTx.date, merchant: manualTx.merchant, amount, category: manualTx.category, saved: false, fresh: true });
+  txs.push({ hash, date: manualTx.date, merchant: manualTx.merchant, amount, category: manualTx.category, card: manualTx.card, saved: false, fresh: true });
   closeModal();
   refresh();
   $('month').value = manualTx.date.slice(0,7);
