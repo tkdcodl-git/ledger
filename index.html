@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>가계부</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
@@ -359,10 +359,30 @@ td select { border-radius: 8px; background: #faf9f6; }
 .cdr i { width: 9px; height: 9px; border-radius: 2px; flex: 0 0 auto; }
 .cdr span { flex: 1; }
 @media (max-width: 600px) { .cdw .donut { width: 104px; height: 104px; } .cdr { font-size: 11px; } }
+
+/* v2.8 모바일 하단 고정 메뉴 */
+#bnav { display: none; }
+@media (max-width: 600px) {
+  #tabs { display: none !important; }
+  #bnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: rgba(255,255,255,.96); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  #bnav .bn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; padding: 4px 0; color: var(--mute); font: inherit; font-size: 10.5px; font-weight: 600; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+  #bnav .bn svg { width: 24px; height: 24px; }
+  #bnav .bn.on { color: var(--ink); }
+  #bnav .bn.on::before { content: ""; position: absolute; top: -6px; left: 30%; right: 30%; height: 2px; border-radius: 2px; background: var(--ink); }
+  body { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important; }
+  #app, #dash, #history { margin-top: calc(14px + env(safe-area-inset-top, 0px)) !important; }
+}
 </style>
 </head>
 <body>
-<nav id="tabs"><div class="seg"><button class="tab on" data-t="tx">거래 내역</button><button class="tab" data-t="dash">대시보드</button><button class="tab" data-t="history">전체 누적</button></div><span class="sp"></span><button class="btn" id="catBtn">분류 설정</button></nav>
+<nav id="tabs"><div class="seg"><button class="tab" data-t="dash">대시보드</button><button class="tab on" data-t="tx">거래 내역</button><button class="tab" data-t="history">전체 누적</button></div><span class="sp"></span><button class="btn" id="catBtn">분류 설정</button></nav>
+<nav id="bnav" aria-label="메뉴">
+  <button class="bn" data-t="dash"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>대시보드</span></button>
+  <button class="bn on" data-t="tx"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6.5 15h4"/></svg><span>거래 내역</span></button>
+  <button class="bn" data-t="history"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>전체 누적</span></button>
+  <button class="bn" data-set="1"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>분류 설정</span></button>
+</nav>
+
 
 <section id="history" class="hide"><div class="panel"><div class="bar"><h2 style="margin:0">월별 누적 내역</h2><span class="sp"></span><button class="btn sm" id="addMonth">+ 월 추가</button></div><div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="historyRows"></tbody></table></div></div></section>
 
@@ -1213,15 +1233,21 @@ async function memoTemplate(kind) {
 // ----- 이벤트 -----
 document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('#bnav .bn[data-t]').forEach(x => x.classList.toggle('on', x.dataset.t === b.dataset.t));
   $('app').classList.toggle('hide', b.dataset.t !== 'tx');
   $('dash').classList.toggle('hide', b.dataset.t !== 'dash');
   $('history').classList.toggle('hide', b.dataset.t !== 'history');
   $('ver').classList.toggle('hide', b.dataset.t === 'dash');
   if (b.dataset.t === 'dash' || b.dataset.t === 'history') drawDash();
 });
-// 좌우 스와이프로 탭 이동 (거래 내역 ↔ 대시보드 ↔ 전체 누적)
+// 모바일 하단 메뉴: 위 탭과 같은 동작
+document.querySelectorAll('#bnav .bn').forEach(b => b.onclick = () => {
+  if (b.dataset.set) return openCats();
+  document.querySelector(`.tab[data-t="${b.dataset.t}"]`).click(); window.scrollTo(0, 0);
+});
+// 좌우 스와이프로 탭 이동 (대시보드 ↔ 거래 내역 ↔ 전체 누적)
 (() => {
-  const order = ['tx', 'dash', 'history'];
+  const order = ['dash', 'tx', 'history'];
   let sx = 0, sy = 0, st = 0, ok = false;
   const hScroll = el => { for (; el && el !== document.body; el = el.parentElement) { const o = getComputedStyle(el).overflowX; if ((o === 'auto' || o === 'scroll') && el.scrollWidth > el.clientWidth + 1) return true; } return false; };
   document.addEventListener('touchstart', e => {
