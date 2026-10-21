@@ -588,13 +588,20 @@ function localParseRows(rows) {
   }
   return out.length && out.length / (out.length + badN) >= 0.9 ? out : null;
 }
+// 매월 고정 내역은 항상 같은 분류로 (예: 'XX월 SK북한산시 0133동2202호 - 관리비')
+const FIXED_CATS = [[/SK북한산시.*관리비/, '관리비']];
+function fixedCat(m) {
+  const t = String(m || '').replace(/\s+/g, ' '), f = FIXED_CATS.find(([re]) => re.test(t));
+  if (!f) return '';
+  return CATS.includes(f[1]) ? f[1] : (CATS.find(c => c.includes(f[1])) || f[1]);
+}
 // 카드사: 파일 이름이나 AI가 읽은 이름으로 추정, 표에서 직접 바꿀 수 있음
 const CARD_LIST = ['신한', '삼성', '현대', 'KB국민', '롯데', '하나', '우리', 'BC', 'NH농협', 'IBK기업', '카카오뱅크', '토스', '씨티'];
 let cardColMissing = false;
 function cardOf(text) {
   const t = String(text || '').replace(/\s/g, '').toLowerCase();
   if (!t) return '';
-  const keys = [['신한', /신한|shinhan/], ['삼성', /삼성|samsung/], ['현대', /현대|hyundai/], ['KB국민', /국민|kb/], ['롯데', /롯데|lotte/], ['하나', /하나|hana|외환/], ['우리', /우리|woori/], ['BC', /비씨|bc카드|^bc|bccard/], ['NH농협', /농협|nh/], ['IBK기업', /기업|ibk/], ['카카오뱅크', /카카오|kakao/], ['토스', /토스|toss/], ['씨티', /씨티|citi/]];
+  const keys = [['신한', /이용대금명세서\(신용카드\)/], ['하나', /이용대금명세서_이용상세내역/], ['현대', /^hyundaicard/], ['신한', /신한|shinhan/], ['삼성', /삼성|samsung/], ['현대', /현대|hyundai/], ['KB국민', /국민|kb/], ['롯데', /롯데|lotte/], ['하나', /하나|hana|외환/], ['우리', /우리|woori/], ['BC', /비씨|bc카드|^bc|bccard/], ['NH농협', /농협|nh/], ['IBK기업', /기업|ibk/], ['카카오뱅크', /카카오|kakao/], ['토스', /토스|toss/], ['씨티', /씨티|citi/]];
   const k = keys.find(([, re]) => re.test(t));
   return k ? k[0] : '';
 }
@@ -836,7 +843,7 @@ async function handle(files) {
         const hash = base + '|' + seen[base];
         if (existing.has(hash)) continue;
         existing.add(hash);
-        txs.push({ hash, date: t.date, merchant: t.merchant, amount: t.amount, category: ruleFor(t.merchant) || (CATS.includes(t.category) ? t.category : '기타'), card: cardOf(t.card) || t.card || '', saved: false, fresh: true });
+        txs.push({ hash, date: t.date, merchant: t.merchant, amount: t.amount, category: fixedCat(t.merchant) || ruleFor(t.merchant) || (CATS.includes(t.category) ? t.category : '기타'), card: cardOf(t.card) || t.card || '', saved: false, fresh: true });
         added++;
       }
     };
