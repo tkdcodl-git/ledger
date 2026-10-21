@@ -415,6 +415,13 @@ td select { border-radius: 8px; background: #faf9f6; }
   .sheet { padding: 14px; }
   .fl { margin: 8px 0; font-size: 12px; }
 }
+
+/* v3.0 그래프 범례를 제목 옆에 */
+.ttl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.ttl h2 { margin: 0 !important; }
+.ttl .lg { margin: 0 !important; }
+#catsView { max-width: 1180px; margin: 16px auto 0; padding: 0 20px; }
+@media (max-width: 600px) { #catsView { padding: 0 3px; margin-top: calc(10px + env(safe-area-inset-top, 0px)); } #catsBody .crow { margin: 4px 0; } #catsBody .crow input { padding: 5px 8px; } }
 </style>
 </head>
 <body>
@@ -424,18 +431,20 @@ td select { border-radius: 8px; background: #faf9f6; }
   <button class="bn" data-t="dash"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>대시보드</span></button>
   <button class="bn on" data-t="tx"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 10h19M6.5 15h4"/></svg><span>거래 내역</span></button>
   <button class="bn" data-t="history"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg><span>전체 누적</span></button>
-  <button class="bn" data-set="1"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>분류 설정</span></button>
+  <button class="bn" data-t="cats"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>분류 설정</span></button>
 </nav>
 
 
 <section id="history" class="hide"><div class="panel"><div class="bar"><h2 style="margin:0">월별 누적 내역</h2><span class="sp"></span><button class="btn sm" id="addMonth">+ 월 추가</button></div><div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="historyRows"></tbody></table></div></div></section>
+
+<section id="catsView" class="hide"><div class="panel" id="catsBody"></div></section>
 
 <section id="dash" class="hide">
   <div class="panel">
     <div class="tbl"><table class="dt"><thead><tr><th>년월</th><th>잔액</th><th>변동</th><th>수입</th><th>지출</th><th>비고</th></tr></thead><tbody id="dashRows"></tbody></table></div>
     </div>
   <div class="dgrid">
-    <div class="panel"><h2>최근 6개월 수입/지출</h2><div id="lineChart"></div></div>
+    <div class="panel"><div class="ttl"><h2>최근 6개월 수입/지출</h2><div id="lineLg"></div></div><div id="lineChart"></div></div>
     <div class="panel"><div class="bar"><h2 style="margin:0">분류별 비중</h2><select id="catMonth" class="btn"></select></div><div id="catBars"></div></div>
     <div class="panel"><h2 style="margin:0 0 6px">카드사별 금액 <span class="muted" id="cardMonthLbl" style="font-weight:400"></span></h2><div id="cardDonut"></div></div>
   </div>
@@ -1077,6 +1086,7 @@ function drawDash() {
     };
   });
   $('lineChart').innerHTML = trendSVG(ms.map(m => m.slice(2).replace('-', '.')), trend);
+  const lg = $('lineChart').querySelector('.lg'); $('lineLg').innerHTML = ''; if (lg) $('lineLg').appendChild(lg); // 범례는 제목 오른쪽 같은 줄에
 
   // 분류별 비중
   const opts = [...ms].reverse();
@@ -1088,7 +1098,7 @@ function drawDash() {
   drawCardDonut();
 }
 // 카드사별 금액 + 도넛(비중). 분류별 비중과 같은 달 기준
-const CARD_COLORS = ['#3f7fbf', '#e0874f', '#4aa89b', '#c9566b', '#8a6cc4', '#d4b13f', '#6b8f4e', '#9a8f86'];
+const CARD_COLORS = ['#52b5ad', '#ee8450', '#e0687a', '#47a3de', '#f5b95e', '#2c8f87', '#c4465a', '#9fd3cf']; // 수입/지출 그래프 + 분류별 비중 색
 function drawCardDonut() {
   const sum = {};
   txs.filter(t => t.date.startsWith(dashCatMonth)).forEach(t => { const k = t.card || '미지정'; sum[k] = (sum[k] || 0) + t.amount; });
@@ -1187,13 +1197,15 @@ const closeModal = () => { $('modal').classList.add('hide'); $('modal').classLis
 
 // ----- 분류 설정 -----
 function openCats() { catRows = CATS.map(c => ({ orig: c, name: c })); renderCats(); }
-function renderCats(msg) {
-  openModal(`<h2>분류 설정</h2>
+let catsInline = false;
+function renderCats(msg, ok) {
+  const html = (`<h2>분류 설정</h2>
     <div>${catRows.map((r, i) => `<div class="crow"><input lang="ko" data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
     <div class="crow"><input lang="ko" id="newCat" placeholder="새 분류 이름"><button class="btn" id="addCat">추가</button></div>
     <p class="muted">이름을 바꾸면 기존 거래도 함께 바뀌고, 삭제한 분류의 거래는 '기타'로 옮겨져요.</p>
-    <p id="catMsg" class="${msg ? '' : 'hide'}" style="color:var(--warn)">${esc(msg || '')}</p>
-    <div class="bar"><span class="sp"></span><button class="btn" data-close>닫기</button><button class="btn primary" id="catSave">저장</button></div>`, window.matchMedia('(max-width:600px)').matches);
+    <p id="catMsg" class="${msg ? '' : 'hide'}" style="color:${ok ? 'var(--accent)' : 'var(--warn)'}">${esc(msg || '')}</p>
+    <div class="bar"><span class="sp"></span>${catsInline ? '' : '<button class="btn" data-close>닫기</button>'}<button class="btn primary" id="catSave">저장</button></div>`);
+  if (catsInline) $('catsBody').innerHTML = html; else openModal(html);
 }
 async function saveCats() {
   const names = catRows.map(r => r.name.trim());
@@ -1210,7 +1222,7 @@ async function saveCats() {
     const e = (await sb.from('settings').upsert({ key: 'categories', value: names }, { onConflict: 'key' })).error;
     if (e) throw e;
   } catch (e) { return renderCats('저장 실패: ' + e.message); }
-  CATS = names; closeModal(); refresh(); setStatus('분류를 저장했어요.');
+  CATS = names; refresh(); if (catsInline) { openCats(); renderCats('분류를 저장했어요.', true); } else { closeModal(); setStatus('분류를 저장했어요.'); }
 }
 
 // ----- 월 정보 입력 -----
@@ -1279,23 +1291,25 @@ async function memoTemplate(kind) {
 }
 
 // ----- 이벤트 -----
-document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-  document.querySelectorAll('#bnav .bn[data-t]').forEach(x => x.classList.toggle('on', x.dataset.t === b.dataset.t));
-  $('app').classList.toggle('hide', b.dataset.t !== 'tx');
-  $('dash').classList.toggle('hide', b.dataset.t !== 'dash');
-  $('history').classList.toggle('hide', b.dataset.t !== 'history');
-  $('ver').classList.toggle('hide', b.dataset.t === 'dash');
-  if (b.dataset.t === 'dash' || b.dataset.t === 'history') drawDash();
-});
-// 모바일 하단 메뉴: 위 탭과 같은 동작
-document.querySelectorAll('#bnav .bn').forEach(b => b.onclick = () => {
-  if (b.dataset.set) return openCats();
-  document.querySelector(`.tab[data-t="${b.dataset.t}"]`).click(); window.scrollTo(0, 0);
-});
+let curTab = 'tx';
+function showTab(t) {
+  curTab = t;
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  document.querySelectorAll('#bnav .bn').forEach(x => x.classList.toggle('on', x.dataset.t === t));
+  $('app').classList.toggle('hide', t !== 'tx');
+  $('dash').classList.toggle('hide', t !== 'dash');
+  $('history').classList.toggle('hide', t !== 'history');
+  $('catsView').classList.toggle('hide', t !== 'cats');
+  $('ver').classList.toggle('hide', t === 'dash' || t === 'cats');
+  if (t === 'dash' || t === 'history') drawDash();
+  if (t === 'cats') { catsInline = true; openCats(); } else catsInline = false;
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.t));
+// 모바일 하단 메뉴 (분류 설정은 별도 화면)
+document.querySelectorAll('#bnav .bn').forEach(b => b.onclick = () => { showTab(b.dataset.t); window.scrollTo(0, 0); });
 // 좌우 스와이프로 탭 이동 (대시보드 ↔ 거래 내역 ↔ 전체 누적)
 (() => {
-  const order = ['dash', 'tx', 'history'];
+  const order = ['dash', 'tx', 'history', 'cats'];
   let sx = 0, sy = 0, st = 0, ok = false;
   const hScroll = el => { for (; el && el !== document.body; el = el.parentElement) { const o = getComputedStyle(el).overflowX; if ((o === 'auto' || o === 'scroll') && el.scrollWidth > el.clientWidth + 1) return true; } return false; };
   document.addEventListener('touchstart', e => {
@@ -1306,9 +1320,9 @@ document.querySelectorAll('#bnav .bn').forEach(b => b.onclick = () => {
     if (!ok) return; ok = false;
     const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 2 || Date.now() - st > 800) return;
-    const cur = order.indexOf((document.querySelector('.tab.on') || {}).dataset?.t), nx = order[cur + (dx < 0 ? 1 : -1)];
-    if (cur < 0 || !nx) return;
-    document.querySelector(`.tab[data-t="${nx}"]`).click(); window.scrollTo(0, 0);
+    const cur = order.indexOf(curTab), nx = order[cur + (dx < 0 ? 1 : -1)];
+    if (cur < 0 || !nx || (nx === 'cats' && !window.matchMedia('(max-width:600px)').matches)) return;
+    showTab(nx); window.scrollTo(0, 0);
   }, { passive: true });
 })();
 $('addMonth').onclick = () => {
@@ -1353,6 +1367,13 @@ $('modal').oninput = e => {
   else if (d.f) { const k = d.f.startsWith('in') ? 'income' : 'expense'; led[k][+d.i][d.f.endsWith('N') ? 'n' : 'v'] = e.target.value; autoBal(); }
 };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+$('catsView').onclick = e => {
+  const d = e.target.dataset;
+  if (e.target.id === 'addCat') { const v = $('newCat').value.trim(); if (!v) return; if (catRows.some(r => r.name === v)) return renderCats('이미 있는 분류예요.'); catRows.push({ orig: null, name: v }); return renderCats(); }
+  if (d.cdel) { catRows.splice(+d.cdel, 1); return renderCats(); }
+  if (e.target.id === 'catSave') return saveCats();
+};
+$('catsView').oninput = e => { const d = e.target.dataset; if (d.ci != null) catRows[+d.ci].name = e.target.value; };
 
 if (sb) loadAll();
 </script>
