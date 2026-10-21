@@ -406,7 +406,7 @@ td select { border-radius: 8px; background: #faf9f6; }
   #dash .track { height: 8px; }
   #dash #catMonth { padding: 2px 6px; font-size: 10px; }
   #dash .lg { font-size: 9px; margin-bottom: 0; }
-  .cdw .donut { width: 84px !important; height: 84px !important; }
+  .cdw .donut { width: 124px !important; height: 124px !important; }
   .cdr { font-size: 10px !important; padding: 1px 0; }
   .total { font-size: 18px; }
   .cat { font-size: 11px; }
@@ -419,7 +419,8 @@ td select { border-radius: 8px; background: #faf9f6; }
 /* v3.0 그래프 범례를 제목 옆에 */
 .ttl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .ttl h2 { margin: 0 !important; }
-.ttl .lg { margin: 0 0 0 auto !important; justify-content: flex-end; }
+.ttl .lg { margin: 0 !important; justify-content: flex-end; }
+#lineLg { margin-left: auto; }
 #catsView { max-width: 1180px; margin: 16px auto 0; padding: 0 20px; }
 @media (max-width: 600px) { #catsView { padding: 0 3px; margin-top: calc(10px + env(safe-area-inset-top, 0px)); } #catsBody .crow { margin: 4px 0; } #catsBody .crow input { padding: 5px 8px; } }
 .crow[data-row] { position: relative; border-radius: 6px; -webkit-touch-callout: none; transition: box-shadow .15s; }
@@ -440,6 +441,10 @@ td select { border-radius: 8px; background: #faf9f6; }
 .cpb { border: 1px solid var(--line); background: #faf9f6; border-radius: 6px; padding: 10px 4px; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; overflow-wrap: anywhere; }
 .cpb.on { background: var(--dark); color: #fff; border-color: var(--dark); }
 @media (min-width: 601px) { #catPick { align-items: center; } .cpk { border-radius: 10px; } }
+.cdw .donut { width: 150px; height: 150px; }
+.cdr span { flex: 0 0 auto; }
+.cdr b { margin-left: 6px; font-weight: 600; }
+.cdl { flex: 0 1 auto; }
 </style>
 </head>
 <body>
@@ -1260,7 +1265,6 @@ function renderCats(msg, ok) {
   const html = (`<h2>분류 설정</h2>
     <div>${catRows.map((r, i) => `<div class="crow" data-row="${i}"><span class="grip" aria-hidden="true">≡</span><input lang="ko" data-ci="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly' : ''} aria-label="분류 이름"><button class="x" data-cdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
     <div class="crow"><input lang="ko" id="newCat" placeholder="새 분류 이름"><button class="btn" id="addCat">추가</button></div>
-    <p class="muted">≡ 부분이나 분류를 길게 누른 채 위아래로 끌면 순서를 바꿀 수 있어요. 이름을 바꾸면 기존 거래도 함께 바뀌고, 삭제한 분류의 거래는 '기타'로 옮겨져요.</p>
     <p id="catMsg" class="${msg ? '' : 'hide'}" style="color:${ok ? 'var(--accent)' : 'var(--warn)'}">${esc(msg || '')}</p>
     <div class="bar"><span class="sp"></span>${catsInline ? '' : '<button class="btn" data-close>닫기</button>'}<button class="btn primary" id="catSave">저장</button></div>`);
   if (catsInline) $('catsBody').innerHTML = html; else openModal(html);
