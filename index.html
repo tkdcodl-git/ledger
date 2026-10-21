@@ -468,6 +468,18 @@ td select { border-radius: 8px; background: #faf9f6; }
   #dash .dt .il, #history .dt .il { padding-left: 3px; padding-right: 3px; }
   #dash .dt .is, #history .dt .is { padding-left: 3px; padding-right: 3px; }
 }
+
+/* v3.4 표 열 너비 고르게, 카드사 도넛·목록 가운데로 */
+.cdw { padding: 0 9%; }
+@media (max-width: 600px) {
+  #dash .dt th:nth-child(1), #dash .dt td:nth-child(1), #history .dt th:nth-child(1), #history .dt td:nth-child(1) { width: 35px; }
+  #dash .dt th:nth-child(2), #dash .dt td:nth-child(2), #history .dt th:nth-child(2), #history .dt td:nth-child(2) { width: 35px; }
+  #dash .dt th:nth-child(3), #dash .dt td:nth-child(3), #history .dt th:nth-child(3), #history .dt td:nth-child(3) { width: 37px; }
+  #dash .dt th:nth-child(4), #dash .dt td:nth-child(4), #history .dt th:nth-child(4), #history .dt td:nth-child(4),
+  #dash .dt th:nth-child(5), #dash .dt td:nth-child(5), #history .dt th:nth-child(5), #history .dt td:nth-child(5) { width: 73px; }
+  #dash .dt .ln, #history .dt .ln { gap: 4px; }
+  .cdw { padding: 0 6%; }
+}
 </style>
 </head>
 <body>
