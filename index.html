@@ -480,6 +480,11 @@ td select { border-radius: 8px; background: #faf9f6; }
   #dash .dt .ln, #history .dt .ln { gap: 4px; }
   .cdw { padding: 0 6%; }
 }
+
+/* v3.5 굵기: 합계 보통, 헤더 굵게, 최근 달 잔액·변동 굵게 */
+.dt .ln.sum, .dt .ln.sum b { font-weight: 400 !important; }
+.dt thead th { font-weight: 700 !important; color: var(--ink); }
+.dt tbody tr.r1:first-child td.n { font-weight: 700; }
 </style>
 </head>
 <body>
