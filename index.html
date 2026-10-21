@@ -487,11 +487,8 @@ td select { border-radius: 8px; background: #faf9f6; }
 /* v3.5 굵기: 합계 보통, 헤더 굵게, 최근 달 잔액·변동 굵게 */
 .dt .ln.sum, .dt .ln.sum b { font-weight: 400 !important; }
 .dt thead th { font-weight: 700 !important; color: var(--ink); }
-.dt tbody tr.r1:first-child td.n { font-weight: 700; }
 
 /* v3.6 최근 달 년월 굵게, 모바일 배경 복원, PC 대시보드 배치 */
-.dt tbody tr.r1:first-child td.c { font-weight: 700; }
-.dt tbody tr.r1:first-child td.c .btn { font-weight: 400; }
 @media (max-width: 600px) {
   html { background: radial-gradient(760px 360px at 8% 0, #ebe7fb 0, transparent 70%), radial-gradient(680px 340px at 100% 0, #def2ee 0, transparent 65%), var(--bg) !important; background-repeat: no-repeat !important; }
   #topCover { display: none !important; }
@@ -511,6 +508,16 @@ html { background: var(--bg) !important; }
     radial-gradient(65% 50% at 0% 100%, #def2ee 0, transparent 70%),
     radial-gradient(60% 40% at 50% 55%, #f1eefb 0, transparent 75%),
     var(--bg); }
+
+/* v3.8 모바일: 상단 흐림 구간 피하기, 하단 메뉴 높이 */
+@media (max-width: 600px) {
+  #app, #dash, #history, #catsView { margin-top: 30px !important; }
+  #bnav { padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px)) !important; }
+  #bnav .bn { gap: 3px !important; padding: 4px 0 3px !important; font-size: 10px !important; }
+  #bnav .bn svg { width: 22px !important; height: 22px !important; }
+  #bnav .bn.on::before { top: -6px !important; }
+  body { padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)) !important; }
+}
 </style>
 </head>
 <body>
