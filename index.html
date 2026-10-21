@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="theme-color" content="#f4f3ef">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>가계부</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
@@ -497,10 +500,22 @@ td select { border-radius: 8px; background: #faf9f6; }
   #dash .dgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
   #dash .dgrid > .panel:first-child { grid-column: 1 / -1; }
 }
+
+/* v3.7 배경 그라데이션을 화면 전체에 (스크롤해도 고정) */
+html { background: var(--bg) !important; }
+#bgLayer { position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(70% 45% at 0% 0%, #ebe7fb 0, transparent 70%),
+    radial-gradient(65% 45% at 100% 0%, #def2ee 0, transparent 70%),
+    radial-gradient(70% 50% at 100% 100%, #ebe7fb 0, transparent 70%),
+    radial-gradient(65% 50% at 0% 100%, #def2ee 0, transparent 70%),
+    radial-gradient(60% 40% at 50% 55%, #f1eefb 0, transparent 75%),
+    var(--bg); }
 </style>
 </head>
 <body>
 <div id="topCover" aria-hidden="true"></div>
+<div id="bgLayer" aria-hidden="true"></div>
 <nav id="tabs"><div class="seg"><button class="tab" data-t="dash">대시보드</button><button class="tab on" data-t="tx">거래 내역</button><button class="tab" data-t="history">전체 누적</button></div><span class="sp"></span><button class="btn" id="catBtn">분류 설정</button></nav>
 <nav id="bnav" aria-label="메뉴">
   <button class="bn" data-t="dash"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>대시보드</span></button>
