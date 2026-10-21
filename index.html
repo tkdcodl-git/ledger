@@ -340,6 +340,16 @@ td select { border-radius: 8px; background: #faf9f6; }
   #tabs .btn { padding: 7px 12px; font-size: 12px; }
 }
 
+
+/* v2.6 대시보드: 카드 간격 통일·축소, 모서리 각지게, 표 헤더·그래프 아래 여백 축소 */
+#dash > .panel, #dash .dgrid .panel { margin: 0 !important; }
+#dash .dgrid { gap: 6px !important; margin-top: 6px !important; }
+.panel, #dash .panel, #history .panel, #dash > .panel, #history > .panel { border-radius: 6px; }
+.seg, #drop, .sheet { border-radius: 6px; }
+#tabs .tab, .btn, #tabs .btn { border-radius: 5px; }
+#dash .dt thead th, #history .dt thead th { padding-top: 1px !important; padding-bottom: 1px !important; line-height: 1 !important; height: auto; }
+#dash #lineChart svg { display: block; }
+#dash .dgrid .panel h2 { margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -997,7 +1007,7 @@ function drawDash() {
 }
 function trendSVG(labels, data) {
   const mob = window.matchMedia('(max-width:600px)').matches;
-  const W = mob ? 340 : 560, H = mob ? 160 : 210, pl = 38, pr = 10, pt = 22, pb = 26;
+  const W = mob ? 340 : 560, H = mob ? 160 : 210, pl = 38, pr = 10, pt = 22, pb = 15;
   const all = data.flatMap(d => [d.bal, d.inc, d.exp]).filter(v => v != null);
   const max = Math.max(10, ...all) * 1.12, n = labels.length, step = (W - pl - pr) / n;
   const cx = i => pl + step * (i + 0.5), y = v => pt + (H - pt - pb) * (1 - v / max), base = y(0);
@@ -1021,7 +1031,7 @@ function trendSVG(labels, data) {
     if (d.exp != null) s += `<text x="${cx(i)}" y="${y(d.exp) + (up ? 14 : -7)}" text-anchor="middle" font-size="9" fill="#c4465a" ${halo}>${mm(d.exp)}</text>`;
     return s;
   }).join('');
-  const xl = labels.map((l, i) => `<text x="${cx(i)}" y="${H - 9}" text-anchor="middle" font-size="10" fill="#69766f">${l}</text>`).join('');
+  const xl = labels.map((l, i) => `<text x="${cx(i)}" y="${H - 2}" text-anchor="middle" font-size="10" fill="#69766f">${l}</text>`).join('');
   return `<div class="lg"><span><i style="background:linear-gradient(#5ab9aa,#47a3de);opacity:.6"></i>잔액</span><span><i style="background:#52b5ad"></i>수입 합계</span><span><i style="background:#e0687a"></i>지출 합계</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 6개월 잔액, 수입, 지출(만원)"><defs><linearGradient id="gBal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5ab9aa" stop-opacity=".55"/><stop offset="1" stop-color="#47a3de" stop-opacity=".35"/></linearGradient></defs>${g}${bars}${line('inc', '#52b5ad')}${line('exp', '#e0687a')}${lbl}${xl}</svg>`;
 }
 function lineSVG(labels, vals, compact = false) {
