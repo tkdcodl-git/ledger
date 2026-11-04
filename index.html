@@ -535,6 +535,19 @@ html { background: var(--bg) !important; }
   #bnav .bn.on::before { top: -10px !important; }
   body { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important; }
 }
+
+/* v3.7 좁은 카드에서 카드사 범례 줄바꿈 방지: 도넛 좌측으로, 범례 넓게 */
+#cardDonutTx { container-type: inline-size; }
+.cdr span, .cdr b, .cdr em { white-space: nowrap; }
+@container (max-width: 380px) {
+  #cardDonutTx .cdw { padding: 0 !important; gap: 10px; justify-content: space-between; }
+  #cardDonutTx .cdw .donut { width: 118px !important; height: 118px !important; flex: 0 0 auto; }
+  #cardDonutTx .cdl { margin-left: 0; flex: 1 1 auto; justify-content: end; column-gap: 6px; }
+}
+@container (max-width: 300px) {
+  #cardDonutTx .cdw .donut { width: 100px !important; height: 100px !important; }
+  #cardDonutTx .cdr { font-size: 12px !important; }
+}
 </style>
 </head>
 <body>
