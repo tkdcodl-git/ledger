@@ -536,7 +536,7 @@ html { background: var(--bg) !important; }
   body { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 
-/* v3.7 좁은 카드에서 카드사 범례 줄바꿈 방지: 도넛 좌측으로, 범례 넓게 */
+/* v4.3 좁은 카드에서 카드사 범례 줄바꿈 방지: 도넛 좌측으로, 범례 넓게 */
 #cardDonutTx { container-type: inline-size; }
 .cdr span, .cdr b, .cdr em { white-space: nowrap; }
 @container (max-width: 380px) {
@@ -547,6 +547,11 @@ html { background: var(--bg) !important; }
 @container (max-width: 300px) {
   #cardDonutTx .cdw .donut { width: 100px !important; height: 100px !important; }
   #cardDonutTx .cdr { font-size: 12px !important; }
+}
+
+/* v4.4 PC: 스크롤해도 상단 메뉴 고정 */
+@media (min-width: 601px) {
+  #tabs { position: sticky; top: 0; z-index: 50; margin-top: 0 !important; padding-top: 12px !important; padding-bottom: 10px !important; background: var(--bg); box-shadow: 0 6px 8px -8px rgba(0,0,0,.18); }
 }
 </style>
 </head>
@@ -629,8 +634,8 @@ html { background: var(--bg) !important; }
 // ▼ 본인 Supabase 값으로 교체 (anon 키는 공개해도 되는 키입니다)
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
-// 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v4.2'; // 변경할 때마다 0.1씩 올림
+// 버전 규칙: 변경할 때마다 0.1 증가, x.9 다음은 (x+1).0 (예: v4.9 → v5.0)
+const APP_VERSION = 'v4.4'; // 변경할 때마다 0.1씩 올림
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
