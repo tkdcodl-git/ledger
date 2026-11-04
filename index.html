@@ -600,7 +600,9 @@ html { background: var(--bg) !important; }
     <div class="panel">
       <div class="muted">카드값 합계</div>
       <div class="total" id="total">0만원</div>
-      <div id="cardSum" style="margin-top:8px"></div>
+      <h2 style="margin:12px 0 6px">카드사별 금액 <span class="muted" id="cardMonthLblTx" style="font-weight:400"></span></h2>
+      <div id="cardDonutTx"></div>
+      <div id="cardSum" class="muted" style="margin-top:6px"></div>
       <div id="cats" style="margin-top:10px"></div>
     </div>
   </aside>
@@ -615,7 +617,7 @@ html { background: var(--bg) !important; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, v1.9 다음은 v2.0
-const APP_VERSION = 'v4.1'; // 변경할 때마다 0.1씩 올림
+const APP_VERSION = 'v4.2'; // 변경할 때마다 0.1씩 올림
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -1132,10 +1134,8 @@ function draw() {
   const sum = {}; let total = 0;
   all.forEach(t => { sum[t.category] = (sum[t.category] || 0) + t.amount; total += t.amount; });
   $('total').textContent = man(total) + '만원';
-  const bc = {}; all.forEach(t => { const k = t.card || '미지정'; bc[k] = (bc[k] || 0) + t.amount; });
-  const bce = Object.entries(bc).sort((a, b) => b[1] - a[1]);
-  $('cardSum').innerHTML = bce.length && !(bce.length === 1 && bce[0][0] === '미지정') ? bce.map(([c, v]) => `<div class="ln"><span>${esc(c)}</span><b>${man(v)}만원</b></div>`).join('') : '';
-  if (cardColMissing) $('cardSum').innerHTML += '<p class="muted">카드사는 DB에 card 열을 추가해야 저장돼요.</p>';
+  drawCardDonut('cardDonutTx', m, 'cardMonthLblTx');
+  $('cardSum').innerHTML = cardColMissing ? '<p class="muted">카드사는 DB에 card 열을 추가해야 저장돼요.</p>' : '';
   const entries = Object.entries(sum).sort((a, b) => b[1] - a[1]), max = Math.max(1, ...entries.map(e => Math.abs(e[1])));
   $('cats').innerHTML = entries.map(([c, v]) => `<div class="cat"><span>${esc(c)}</span><i style="width:${Math.max(2, Math.abs(v) / max * 90)}px"></i><span class="v">${man(v)}</span></div>`).join('');
   $('empty').textContent = txs.length ? '이 조건에 맞는 내역이 없어요.' : '아직 내역이 없어요. 위에서 카드내역을 올려보세요.';
@@ -1245,28 +1245,28 @@ function drawDash() {
   const cats = Object.entries((card[dashCatMonth] || { cats: {} }).cats).filter(e => e[1] > 0).sort((a, b) => b[1] - a[1]);
   const tot = cats.reduce((a, e) => a + e[1], 0);
   $('catBars').innerHTML = cats.length ? cats.map(([c, v]) => `<div class="hb"><span>${esc(c)}</span><div class="track"><i style="width:${(v / tot * 100).toFixed(1)}%"></i></div><b>${mm(v / 10000)}만 · ${Math.round(v / tot * 100)}%</b></div>`).join('') : '<p class="muted">이 달의 거래 내역이 없어요.</p>';
-  drawCardDonut();
+  drawCardDonut('cardDonut', dashCatMonth, 'cardMonthLbl');
 }
-// 카드사별 금액 + 도넛(비중). 분류별 비중과 같은 달 기준
+// 카드사별 금액 + 도넛(비중). 대시보드와 거래내역에서 같은 렌더러 사용
 const CARD_COLORS = ['#52b5ad', '#ee8450', '#e0687a', '#47a3de', '#f5b95e', '#2c8f87', '#c4465a', '#9fd3cf']; // 수입/지출 그래프 + 분류별 비중 색
 // 카드사 고유 색: 신한 파랑, 하나 초록, 현대 진한 회색, 미지정 주황. 그 외는 기본 색 순서
 const CARD_FIXED = { '신한': '#47a3de', '하나': '#52b5ad', '현대': '#6b7078', '미지정': '#ee8450' }; // 그래프 색: 잔액 파랑·수입 초록, 분류별 비중 주황
 const CARD_EXTRA = ['#e0687a', '#5ab9aa', '#f5b95e', '#c4465a']; // 그 외 카드사: 지출 분홍 등 그래프 색
 const cardColor = (c, i) => CARD_FIXED[c] || CARD_EXTRA[i % CARD_EXTRA.length];
-function drawCardDonut() {
+function drawCardDonut(targetId = 'cardDonut', targetMonth = dashCatMonth, labelId = 'cardMonthLbl') {
   const sum = {};
-  txs.filter(t => t.date.startsWith(dashCatMonth)).forEach(t => { const k = t.card || '미지정'; sum[k] = (sum[k] || 0) + t.amount; });
+  txs.filter(t => t.date.startsWith(targetMonth)).forEach(t => { const k = t.card || '미지정'; sum[k] = (sum[k] || 0) + t.amount; });
   const list = Object.entries(sum).filter(e => e[1] > 0).sort((a, b) => b[1] - a[1]);
   const tot = list.reduce((a, e) => a + e[1], 0);
-  $('cardMonthLbl').textContent = dashCatMonth ? dashCatMonth.replace('-', '년 ') + '월' : '';
-  if (!list.length) { $('cardDonut').innerHTML = '<p class="muted">이 달의 거래 내역이 없어요.</p>'; return; }
+  if ($(labelId)) $(labelId).textContent = targetMonth ? targetMonth.replace('-', '년 ') + '월' : '';
+  if (!list.length) { $(targetId).innerHTML = '<p class="muted">이 달의 거래 내역이 없어요.</p>'; return; }
   const r = 40, C = 2 * Math.PI * r; let off = 0;
   const lite = (hex, a = .45) => '#' + [1, 3, 5].map(k => Math.round(parseInt(hex.slice(k, k + 2), 16) + (255 - parseInt(hex.slice(k, k + 2), 16)) * a).toString(16).padStart(2, '0')).join('');
-  const defs = list.map(([c], i) => `<linearGradient id="cdg${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${lite(cardColor(c, i))}"/><stop offset="1" stop-color="${cardColor(c, i)}"/></linearGradient>`).join('');
-  const segs = list.map(([c, v], i) => { const len = v / tot * C, el = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="url(#cdg${i})" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`; off += len; return el; }).join('');
+  const defs = list.map(([c], i) => `<linearGradient id="${targetId}Grad${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${lite(cardColor(c, i))}"/><stop offset="1" stop-color="${cardColor(c, i)}"/></linearGradient>`).join('');
+  const segs = list.map(([c, v], i) => { const len = v / tot * C, el = `<circle r="${r}" cx="60" cy="60" fill="none" stroke="url(#${targetId}Grad${i})" stroke-width="18" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"/>`; off += len; return el; }).join('');
   const svg = `<svg viewBox="0 0 120 120" class="donut" role="img" aria-label="카드사별 비중"><defs>${defs}</defs><g transform="rotate(-90 60 60)">${segs}</g><text x="60" y="57" text-anchor="middle" font-size="9" fill="#7b8088">합계</text><text x="60" y="70" text-anchor="middle" font-size="12" font-weight="700" fill="#15171a">${mm(tot / 10000)}만</text></svg>`;
   const rows = list.map(([c, v], i) => `<div class="cdr"><i style="background:linear-gradient(90deg, ${lite(cardColor(c, i))}, ${cardColor(c, i)})"></i><span>${esc(c)}</span><b>${mm(v / 10000)}만</b><em>${Math.round(v / tot * 100)}%</em></div>`).join('');
-  $('cardDonut').innerHTML = `<div class="cdw">${svg}<div class="cdl">${rows}</div></div>`;
+  $(targetId).innerHTML = `<div class="cdw">${svg}<div class="cdl">${rows}</div></div>`;
 }
 function trendSVG(labels, data) {
   const mob = window.matchMedia('(max-width:600px)').matches;
