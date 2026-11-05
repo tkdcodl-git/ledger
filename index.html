@@ -553,6 +553,24 @@ html { background: var(--bg) !important; }
 @media (min-width: 601px) {
   #tabs { position: sticky; top: 0; z-index: 50; margin-top: 0 !important; padding-top: 12px !important; padding-bottom: 10px !important; background: var(--bg); box-shadow: 0 6px 8px -8px rgba(0,0,0,.18); }
 }
+
+/* v4.5 모바일 거래내역: 카드값 합계를 거래내역 리스트 위로 */
+@media (max-width: 600px) {
+  #app { display: flex; flex-direction: column; gap: 10px; }
+  #app > div { display: contents; }
+  #app > div > .panel { margin-top: 0 !important; order: 1; }
+  #app > div > .panel:nth-child(2) { order: 3; }
+  #app > aside { order: 2; margin-top: 0 !important; }
+}
+
+/* v4.6 분류 선택 팝업에서 분류 편집 */
+.cpe { display: block; }
+.cpel { max-height: min(50vh, 360px); overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+.cper { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.cper input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 8px 6px; font: inherit; font-size: 13px; background: #fff; color: var(--ink); }
+.cper input[readonly] { background: #f2f1ee; color: var(--mute); }
+.cper .x[disabled] { opacity: .3; cursor: default; }
+.cpmsg { margin: 6px 0 0; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -582,7 +600,7 @@ html { background: var(--bg) !important; }
   </div>
 </section>
 
-<div id="catPick" class="hide" role="dialog" aria-label="분류 선택"><div class="cpk"><div class="cph"><b id="cpTitle"></b><button class="x" data-cpclose aria-label="닫기">×</button></div><div class="cpg" id="cpGrid"></div></div></div>
+<div id="catPick" class="hide" role="dialog" aria-label="분류 선택"><div class="cpk"><div class="cph"><b id="cpTitle"></b><button class="btn sm" id="cpEditBtn" data-cpedit>분류 편집</button><button class="x" data-cpclose aria-label="닫기">×</button></div><div class="cpg" id="cpGrid"></div></div></div>
 <div id="modal" class="modal hide"><div class="sheet" id="sheet"></div></div>
 <datalist id="inNames"><option>월급</option><option>이자</option></datalist>
 <datalist id="exNames"><option>현금지출</option><option>대출이자</option></datalist>
@@ -635,7 +653,7 @@ html { background: var(--bg) !important; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, x.9 다음은 (x+1).0 (예: v4.9 → v5.0)
-const APP_VERSION = 'v4.4'; // 변경할 때마다 0.1씩 올림
+const APP_VERSION = 'v4.7'; // 변경할 때마다 0.1씩 올림
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -671,6 +689,12 @@ async function loadAll() {
   if (t.error) return setStatus('불러오기 실패: ' + t.error.message, true);
   txs = t.data.map(x => ({ hash: x.hash, date: x.tx_date, merchant: x.merchant, amount: x.amount, category: x.category, card: x.card || '', saved: true }));
   rules = (r.data || []);
+  // v4.7 이미 저장된 고정 내역도 정해진 분류로 맞춤
+  const fixList = txs.filter(x => { const c = fixedCat(x.merchant); return c && x.category !== c; });
+  for (const x of fixList) {
+    const c = fixedCat(x.merchant), e = (await sb.from('transactions').update({ category: c }).eq('hash', x.hash)).error;
+    if (!e) x.category = c;
+  }
   refresh();
 }
 function ruleFor(m) {
@@ -841,8 +865,8 @@ function catDrag(box) {
     row.addEventListener('contextmenu', e => { if (on) e.preventDefault(); });
   });
 }
-// 매월 고정 내역은 항상 같은 분류로 (예: 'XX월 SK북한산시 0133동2202호 - 관리비')
-const FIXED_CATS = [[/SK북한산시.*관리비/, '관리비']];
+// 매월 고정 내역은 항상 같은 분류로 (v4.7: 'XX월 SK북한산시 0133동2202호'처럼 월만 바뀌는 관리비)
+const FIXED_CATS = [[/(\d{1,2}\s*월\s*)?SK\s*북한산시\s*0?133\s*동\s*2202\s*호/i, '관리비']];
 function fixedCat(m) {
   const t = String(m || '').replace(/\s+/g, ' '), f = FIXED_CATS.find(([re]) => re.test(t));
   if (!f) return '';
@@ -1381,12 +1405,13 @@ function renderCats(msg, ok) {
   if (catsInline) $('catsBody').innerHTML = html; else openModal(html);
   catDrag(catsInline ? $('catsBody') : $('sheet'));
 }
-async function saveCats() {
-  const names = catRows.map(r => r.name.trim());
-  if (names.some(n => !n)) return renderCats('이름이 비어 있는 분류가 있어요.');
-  if (new Set(names).size !== names.length) return renderCats('같은 이름의 분류가 있어요.');
-  const removed = CATS.filter(c => !catRows.some(r => r.orig === c));
-  const moves = [...catRows.filter(r => r.orig && r.orig !== r.name.trim()).map(r => [r.orig, r.name.trim()]), ...removed.map(c => [c, '기타'])];
+// 분류 목록 저장 공통 처리 (분류 설정 화면, 분류 선택 팝업에서 함께 사용). 실패하면 오류 문구를 돌려줌
+async function applyCats(rows) {
+  const names = rows.map(r => r.name.trim());
+  if (names.some(n => !n)) return '이름이 비어 있는 분류가 있어요.';
+  if (new Set(names).size !== names.length) return '같은 이름의 분류가 있어요.';
+  const removed = CATS.filter(c => !rows.some(r => r.orig === c));
+  const moves = [...rows.filter(r => r.orig && r.orig !== r.name.trim()).map(r => [r.orig, r.name.trim()]), ...removed.map(c => [c, '기타'])];
   try {
     for (const [from, to] of moves) {
       for (const tb of ['transactions', 'rules']) { const e = (await sb.from(tb).update({ category: to }).eq('category', from)).error; if (e) throw e; }
@@ -1395,8 +1420,12 @@ async function saveCats() {
     }
     const e = (await sb.from('settings').upsert({ key: 'categories', value: names }, { onConflict: 'key' })).error;
     if (e) throw e;
-  } catch (e) { return renderCats('저장 실패: ' + e.message); }
-  CATS = names; refresh(); if (catsInline) { openCats(); renderCats('분류를 저장했어요.', true); } else { closeModal(); setStatus('분류를 저장했어요.'); }
+  } catch (e) { return '저장 실패: ' + e.message; }
+  CATS = names; refresh(); return null;
+}
+async function saveCats() {
+  const err = await applyCats(catRows); if (err) return renderCats(err);
+  if (catsInline) { openCats(); renderCats('분류를 저장했어요.', true); } else { closeModal(); setStatus('분류를 저장했어요.'); }
 }
 
 // ----- 월 정보 입력 -----
@@ -1547,17 +1576,53 @@ let cpSel = null;
 $('rows').addEventListener('click', e => {
   const td = e.target.closest('td.category'); if (!td) return;
   const sel = td.querySelector('select[data-h]'); if (!sel) return;
-  e.preventDefault(); cpSel = sel;
-  const t = txs.find(x => x.hash === sel.dataset.h);
-  $('cpTitle').textContent = t ? t.merchant : '분류 선택';
-  $('cpGrid').innerHTML = [...sel.options].map(o => `<button class="cpb${o.selected ? ' on' : ''}" data-cpv="${esc(o.value)}">${esc(o.textContent)}</button>`).join('');
-  $('catPick').classList.remove('hide');
+  e.preventDefault(); cpSel = sel; cpHash = sel.dataset.h;
+  cpPick(); $('catPick').classList.remove('hide');
 });
-$('catPick').onclick = e => {
-  const v = e.target.dataset.cpv;
+// v4.6 팝업 안에서 분류 추가/수정/삭제
+let cpHash = null, cpRows = null;
+function cpPick() {
+  cpRows = null;
+  if (cpHash) cpSel = document.querySelector(`#rows select[data-h="${CSS.escape(cpHash)}"]`) || cpSel;
+  const t = txs.find(x => x.hash === cpHash);
+  $('cpTitle').textContent = t ? t.merchant : '분류 선택';
+  $('cpEditBtn').classList.remove('hide');
+  const opts = cpSel ? [...cpSel.options] : [];
+  $('cpGrid').className = 'cpg';
+  $('cpGrid').innerHTML = opts.map(o => `<button class="cpb${o.selected ? ' on' : ''}" data-cpv="${esc(o.value)}">${esc(o.textContent)}</button>`).join('');
+}
+function cpEdit(msg, ok) {
+  if (!cpRows) cpRows = CATS.map(c => ({ orig: c, name: c }));
+  $('cpTitle').textContent = '분류 편집';
+  $('cpEditBtn').classList.add('hide');
+  $('cpGrid').className = 'cpe';
+  $('cpGrid').innerHTML = `<div class="cpel">${cpRows.map((r, i) => `<div class="cper"><input lang="ko" data-cpi="${i}" value="${esc(r.name)}" ${r.orig === '기타' ? 'readonly title="기타는 바꿀 수 없어요"' : ''} aria-label="분류 이름"><button class="x" data-cpdel="${i}" ${r.orig === '기타' ? 'disabled' : ''} aria-label="삭제">×</button></div>`).join('')}</div>
+    <div class="cper"><input lang="ko" id="cpNew" placeholder="새 분류 이름"><button class="btn sm" data-cpadd>추가</button></div>
+    <p class="cpmsg" style="color:${ok ? 'var(--accent)' : 'var(--warn)'}">${esc(msg || '삭제한 분류의 내역은 기타로 옮겨져요.')}</p>
+    <div class="bar" style="margin:6px 0 0"><span class="sp"></span><button class="btn sm" data-cpcancel>취소</button><button class="btn sm primary" data-cpsave>저장</button></div>`;
+}
+function cpAdd() {
+  const v = $('cpNew').value.trim(); if (!v) return;
+  if (cpRows.some(r => r.name.trim() === v)) return cpEdit('이미 있는 분류예요.');
+  cpRows.push({ orig: null, name: v }); cpEdit(); $('cpNew').focus();
+}
+$('catPick').onclick = async e => {
+  const d = e.target.dataset, v = d.cpv;
+  if ('cpedit' in d) return cpEdit();
+  if ('cpcancel' in d) return cpPick();
+  if ('cpadd' in d) return cpAdd();
+  if (d.cpdel != null) { cpRows.splice(+d.cpdel, 1); return cpEdit(); }
+  if ('cpsave' in d) {
+    e.target.disabled = true;
+    const err = await applyCats(cpRows);
+    if (err) return cpEdit(err);
+    cpPick(); return;
+  }
   if (v != null && cpSel) { if (cpSel.value !== v) { cpSel.value = v; cpSel.dispatchEvent(new Event('change', { bubbles: true })); } }
-  if (v != null || e.target === $('catPick') || 'cpclose' in e.target.dataset) $('catPick').classList.add('hide');
+  if (v != null || e.target === $('catPick') || 'cpclose' in d) $('catPick').classList.add('hide');
 };
+$('catPick').oninput = e => { const i = e.target.dataset.cpi; if (i != null && cpRows) cpRows[+i].name = e.target.value; };
+$('catPick').onkeydown = e => { if (e.key === 'Enter' && e.target.id === 'cpNew' && !e.isComposing) { e.preventDefault(); cpAdd(); } };
 $('catsView').onclick = e => {
   const d = e.target.dataset;
   if (e.target.id === 'addCat') { const v = $('newCat').value.trim(); if (!v) return; if (catRows.some(r => r.name === v)) return renderCats('이미 있는 분류예요.'); catRows.push({ orig: null, name: v }); return renderCats(); }
