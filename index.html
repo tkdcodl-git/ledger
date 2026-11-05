@@ -653,7 +653,7 @@ html { background: var(--bg) !important; }
 const SUPABASE_URL = 'https://vkstbyuvzoqhbfbyzrva.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZrc3RieXV2em9xaGJmYnl6cnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0NjExMjQsImV4cCI6MjEwODAzNzEyNH0.mE7V6V6zcVIlMcKdOBoJiqJbHHeQ0NEiSb40y7p80U4';
 // 버전 규칙: 변경할 때마다 0.1 증가, x.9 다음은 (x+1).0 (예: v4.9 → v5.0)
-const APP_VERSION = 'v4.8'; // 변경할 때마다 0.1씩 올림
+const APP_VERSION = 'v4.9'; // 변경할 때마다 0.1씩 올림
 const DEFAULT_CATS = ['마트/반찬','백화점/외식','카페/간식','주유/교통','병원/약국','관리비/공과금','통신/구독','쇼핑','여행/숙소','교육/육아','경조사/선물','기타'];
 let CATS = DEFAULT_CATS.slice();
 const $ = id => document.getElementById(id);
@@ -1464,6 +1464,23 @@ async function recalcAfter(m) {
   }
   return null;
 }
+// v4.9 메모의 '■ 현금지출' 아래 괄호 안 숫자를 더해 지출 항목 '현금지출'에 자동 반영
+function cashSum(note) {
+  const lines = String(note || '').split('\n'); let on = false, sum = 0, found = false;
+  for (const ln of lines) {
+    if (/^\s*[■□▪◼●]/.test(ln)) { on = /현금\s*지출/.test(ln); if (on) found = true; continue; }
+    if (on) for (const m of ln.matchAll(/\(\s*(-?[\d,]+(?:\.\d+)?)\s*\)/g)) sum += num(m[1]);
+  }
+  return found ? Math.round(sum * 10) / 10 : null;
+}
+function autoCash() {
+  const v = cashSum(led.note); if (v == null) return;
+  let i = led.expense.findIndex(r => r.n.trim() === '현금지출');
+  if (i < 0) { led.expense.push({ n: '현금지출', v: '' }); i = led.expense.length - 1; }
+  led.expense[i].v = String(v);
+  const el = document.querySelector(`#sheet [data-f="exV"][data-i="${i}"]`);
+  if (el) el.value = led.expense[i].v; else if (document.querySelector('#sheet')) return 'new';
+}
 function autoBal() {
   if (!led.balAuto) return;
   const c = calcBal(); if (c == null) return;
@@ -1471,6 +1488,7 @@ function autoBal() {
   const b = document.querySelector('#sheet [data-f="balance"]'); if (b) b.value = led.balance;
 }
 function renderLedger(msg, ok) {
+  autoCash();
   if (led.balAuto) { const c = calcBal(); if (c != null) led.balance = String(c); }
   const pm = monthAdd(led.m, -1), prevB = (ledger[pm] || {}).balance, cardP = ((cardByMonth()[pm] || { total: 0 }).total) / 10000;
   const hint = prevB != null ? `잔액 = 전월 잔액 ${mm(prevB)} + 수입 − 지출(전월 카드값 ${mm(cardP)} 포함)` : '전월 잔액이 없어 직접 입력해요.';
@@ -1588,7 +1606,7 @@ $('modal').oninput = e => {
   const d = e.target.dataset;
   if (d.ci != null) catRows[+d.ci].name = e.target.value;
   else if (d.f === 'balance') { led.balance = e.target.value; led.balAuto = false; }
-  else if (d.f === 'note') led.note = e.target.value;
+  else if (d.f === 'note') { led.note = e.target.value; if (autoCash() === 'new') { const pos = e.target.selectionStart; renderLedger(); const t = document.querySelector('#sheet [data-f="note"]'); if (t) { t.focus(); t.setSelectionRange(pos, pos); } } autoBal(); }
   else if (d.f === 'cardMemo') led.cardMemo = e.target.value;
   else if (d.f) { const k = d.f.startsWith('in') ? 'income' : 'expense'; led[k][+d.i][d.f.endsWith('N') ? 'n' : 'v'] = e.target.value; autoBal(); }
 };
